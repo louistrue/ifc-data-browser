@@ -1,5 +1,5 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter, Source_Sans_3 } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -22,6 +22,11 @@ export const metadata: Metadata = {
   title: "IFCdataBrowser: Performant IFC Data Analysis",
   description:
     "Modern web application for AEC professionals to browse, analyze, and query IFC building data with WebAssembly-powered IfcOpenShell integration.",
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 }
 
 export default function RootLayout({
