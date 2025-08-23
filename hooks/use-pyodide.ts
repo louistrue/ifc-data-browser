@@ -171,6 +171,55 @@ export function usePyodide() {
     [isInitialized],
   )
 
+  const executeQuery = useCallback(
+    async (query: string): Promise<any[]> => {
+      if (!workerRef.current || !isInitialized) {
+        throw new Error("Pyodide not initialized")
+      }
+
+      return new Promise<any[]>((resolve, reject) => {
+        const worker = workerRef.current!
+
+        worker.postMessage({
+          type: "execute_query",
+          data: { query: query.trim() },
+        })
+
+        const timeout = setTimeout(() => {
+          reject(new Error("Query execution timeout"))
+        }, 30000) // 30 second timeout
+
+        const originalOnMessage = worker.onmessage
+
+        worker.onmessage = (event) => {
+          const { type, data } = event.data
+
+          console.log("[v0] Query worker response:", { type, data })
+
+          if (type === "query_result") {
+            clearTimeout(timeout)
+            worker.onmessage = originalOnMessage
+            resolve(data)
+          } else if (type === "error") {
+            clearTimeout(timeout)
+            worker.onmessage = originalOnMessage
+            reject(new Error(data.message || "Query execution failed"))
+          } else if (originalOnMessage) {
+            originalOnMessage.call(worker, event)
+          }
+        }
+
+        worker.onerror = (error) => {
+          clearTimeout(timeout)
+          console.error("[v0] Query worker error:", error)
+          worker.onmessage = originalOnMessage
+          reject(new Error("Worker execution failed"))
+        }
+      })
+    },
+    [isInitialized],
+  )
+
   const cleanup = useCallback(() => {
     console.log("[v0] Cleaning up Pyodide worker")
     if (workerRef.current) {
@@ -201,6 +250,7 @@ export function usePyodide() {
     isInitialized,
     initializePyodide,
     processIfcFile,
+    executeQuery,
     cleanup,
   }
 }

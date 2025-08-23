@@ -14,9 +14,10 @@ interface DatabaseViewerProps {
   data: ProcessingResult
   onBackToUpload: () => void
   fileName?: string
+  usePyodide: any
 }
 
-export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc" }: DatabaseViewerProps) {
+export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc", usePyodide }: DatabaseViewerProps) {
   const [selectedTable, setSelectedTable] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("overview")
   const [showAllEntities, setShowAllEntities] = useState(false)
@@ -231,8 +232,8 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc" 
                     property_value: subValue,
                     unit:
                       subKey.toLowerCase().includes("length") ||
-                      subKey.toLowerCase().includes("width") ||
-                      subKey.toLowerCase().includes("height")
+                        subKey.toLowerCase().includes("width") ||
+                        subKey.toLowerCase().includes("height")
                         ? "mm"
                         : subKey.toLowerCase().includes("area")
                           ? "m²"
@@ -285,9 +286,9 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc" 
         {
           schema: data.schema,
           total_entities: data.totalEntities,
-          file_name: data.fileName,
-          processing_method: data.processingMethod,
-          sqlite_size: data.sqliteSize,
+          file_name: fileName,
+          processing_method: "Official ifc2sql.py Patcher with ifcopenshell.sql.sqlite",
+          sqlite_size: "N/A (WebAssembly)",
         },
       ],
     }
@@ -671,6 +672,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc" 
             entities={data.entities}
             specialTables={specialTables}
             psetStats={psetStats}
+            usePyodide={usePyodide}
           />
         </TabsContent>
       </Tabs>

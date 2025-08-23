@@ -13,7 +13,8 @@ export default function IFCDataBrowser() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [databaseData, setDatabaseData] = useState<ProcessingResult | null>(null)
 
-  const { status, isInitialized, initializePyodide, processIfcFile, cleanup } = usePyodide()
+  const usePyodideHook = usePyodide()
+  const { status, isInitialized, initializePyodide, processIfcFile, cleanup } = usePyodideHook
 
   // Initialize Pyodide on component mount
   useEffect(() => {
@@ -82,7 +83,7 @@ export default function IFCDataBrowser() {
         )}
 
         {currentView === "database" && databaseData && (
-          <DatabaseViewer data={databaseData} onBackToUpload={handleBackToUpload} fileName={uploadedFile?.name} />
+          <DatabaseViewer data={databaseData} onBackToUpload={handleBackToUpload} fileName={uploadedFile?.name} usePyodide={usePyodideHook} />
         )}
       </main>
     </div>
