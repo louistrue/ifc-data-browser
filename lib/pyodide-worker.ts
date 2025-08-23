@@ -98,16 +98,16 @@ print("IfcOpenShell installed successfully")
         
         await pyodide.runPythonAsync(\`
 import ifcopenshell
-import ifcpatch
+import ifcopenshell.sql
 import json
 import tempfile
 import os
 
 print(f"IfcOpenShell version: {ifcopenshell.version}")
-print("IfcOpenShell and ifcpatch modules loaded successfully")
+print("IfcOpenShell SQL module loaded successfully")
 
 def process_ifc_to_sqlite(file_content, filename):
-    """Process IFC file using official IfcOpenShell ifcpatch with Ifc2Sql recipe"""
+    """Process IFC file using official IfcOpenShell SQL module"""
     print(f"Processing IFC file: {filename}")
     print(f"File size: {len(file_content)} bytes")
     
@@ -125,38 +125,37 @@ def process_ifc_to_sqlite(file_content, filename):
         print(f"Schema: {ifc_file.schema}")
         print(f"Total entities: {len(ifc_file)}")
         
-        # Create SQLite database using the official IfcOpenShell ifcpatch Ifc2Sql recipe
+        # Create SQLite database using the IfcOpenShell SQL module
         sqlite_db_path = '/tmp/model.db'
-        print("Creating SQLite database using ifcpatch Ifc2Sql recipe")
+        print("Creating SQLite database using ifcopenshell.sql")
         
         try:
             # Remove existing database if present
             if os.path.exists(sqlite_db_path):
                 os.remove(sqlite_db_path)
             
-            # Use the proper IfcOpenShell ifcpatch approach with Ifc2Sql recipe
-            print("Converting to SQLite using ifcpatch.execute with Ifc2Sql recipe...")
-            sqlite_temp_filepath = ifcpatch.execute({
-                "input": temp_ifc_path,
-                "file": ifc_file,
-                "recipe": "Ifc2Sql",
-                "arguments": ["sqlite"]
-            })
+            # Use the IfcOpenShell SQL module with correct parameters
+            # The key fix: pass only the database path, let IfcOpenShell handle the file internally
+            print("Converting to SQLite using ifcopenshell.sql.sqlite...")
             
-            print(f"ifcpatch created SQLite database at: {sqlite_temp_filepath}")
+            # Create the SQLite database using just the path - this avoids the len() issue
+            sqlite_file = ifcopenshell.sql.sqlite(sqlite_db_path)
             
-            # Move the generated database to our expected location
-            if sqlite_temp_filepath and os.path.exists(sqlite_temp_filepath):
-                import shutil
-                shutil.move(sqlite_temp_filepath, sqlite_db_path)
-                print(f"SQLite database moved to: {sqlite_db_path}")
+            # Now populate it with our IFC file data
+            sqlite_file.from_file(ifc_file)
+            
+            print(f"SQLite database created at: {sqlite_db_path}")
+            
+            # Verify the database was created
+            if os.path.exists(sqlite_db_path):
+                print("SQLite database created successfully using ifcopenshell.sql")
                 sqlite_success = True
             else:
-                print("ifcpatch did not create a SQLite database file")
+                print("SQLite database file was not created")
                 sqlite_success = False
                 
         except Exception as e:
-            print(f"SQLite creation with ifcpatch failed: {e}")
+            print(f"SQLite creation with ifcopenshell.sql failed: {e}")
             import traceback
             traceback.print_exc()
             sqlite_success = False
@@ -225,7 +224,7 @@ def process_ifc_to_sqlite(file_content, filename):
             'sqliteCreated': sqlite_success,
             'sqliteSize': len(sqlite_data) if sqlite_data else 0,
             'typeStatistics': dict(sorted(type_counts.items(), key=lambda x: x[1], reverse=True)[:20]),
-            'processingMethod': 'ifcpatch Ifc2Sql recipe' if sqlite_success else 'Entity extraction only',
+            'processingMethod': 'ifcopenshell.sql.sqlite' if sqlite_success else 'Entity extraction only',
             'fileName': filename
         }
         
@@ -242,7 +241,7 @@ def process_ifc_to_sqlite(file_content, filename):
         traceback.print_exc()
         raise Exception(f"Failed to process IFC file '{filename}': {str(e)}")
 
-print("IFC processing environment initialized with official IfcOpenShell ifcpatch API")
+print("IFC processing environment initialized with official IfcOpenShell SQL API")
         \`);
         
         console.log('[v0] IfcOpenShell environment initialized successfully');
@@ -271,7 +270,7 @@ print("IFC processing environment initialized with official IfcOpenShell ifcpatc
         pyodide.globals.set('file_content', uint8Array);
         pyodide.globals.set('file_name', fileName);
         
-        self.postMessage({ type: 'progress', progress: 80, step: 'Converting to SQLite using IfcOpenShell ifcpatch' });
+        self.postMessage({ type: 'progress', progress: 80, step: 'Converting to SQLite using IfcOpenShell SQL' });
         
         const result = await pyodide.runPythonAsync(\`
 try:
@@ -309,7 +308,7 @@ except Exception as e:
           throw new Error('Invalid result structure returned from Python processing');
         }
         
-        console.log('[v0] IFC processing completed successfully using IfcOpenShell ifcpatch');
+        console.log('[v0] IFC processing completed successfully using IfcOpenShell SQL');
         self.postMessage({ type: 'progress', progress: 95, step: 'Finalizing Database' });
         self.postMessage({ type: 'progress', progress: 100, step: 'Processing Complete' });
         self.postMessage({ type: 'complete', data: jsResult });
