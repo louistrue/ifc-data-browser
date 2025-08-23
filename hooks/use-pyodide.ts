@@ -29,57 +29,62 @@ export function usePyodide() {
     if (initializationPromiseRef.current) return initializationPromiseRef.current
     if (workerRef.current) return Promise.resolve()
 
-    const initPromise = new Promise<void>((resolve, reject) => {
-      console.log("[v0] Creating new Pyodide worker")
-      const worker = createPyodideWorker()
-      workerRef.current = worker
+    const initPromise = new Promise<void>(async (resolve, reject) => {
+      try {
+        console.log("[v0] Creating new Pyodide worker")
+        const worker = await createPyodideWorker()
+        workerRef.current = worker
 
-      worker.onmessage = (e: MessageEvent<PyodideMessage>) => {
-        const { type, data, progress, step } = e.data
+        worker.onmessage = (e: MessageEvent<PyodideMessage>) => {
+          const { type, data, progress, step } = e.data
 
-        switch (type) {
-          case "progress":
-            setStatus((prev) => ({
-              ...prev,
-              progress: progress || 0,
-              currentStep: step || "",
-            }))
-            break
+          switch (type) {
+            case "progress":
+              setStatus((prev) => ({
+                ...prev,
+                progress: progress || 0,
+                currentStep: step || "",
+              }))
+              break
 
-          case "init":
-            console.log("[v0] Pyodide initialization complete")
-            setIsInitialized(true)
-            setStatus((prev) => ({ ...prev, isProcessing: false }))
-            initializationPromiseRef.current = null
-            resolve()
-            break
+            case "init":
+              console.log("[v0] Pyodide initialization complete")
+              setIsInitialized(true)
+              setStatus((prev) => ({ ...prev, isProcessing: false }))
+              initializationPromiseRef.current = null
+              resolve()
+              break
 
-          case "error":
-            console.error("[v0] Pyodide initialization error:", data?.message)
-            setStatus((prev) => ({
-              ...prev,
-              isProcessing: false,
-              error: data?.message || "Unknown error occurred",
-            }))
-            initializationPromiseRef.current = null
-            reject(new Error(data?.message || "Initialization failed"))
-            break
+            case "error":
+              console.error("[v0] Pyodide initialization error:", data?.message)
+              setStatus((prev) => ({
+                ...prev,
+                isProcessing: false,
+                error: data?.message || "Unknown error occurred",
+              }))
+              initializationPromiseRef.current = null
+              reject(new Error(data?.message || "Initialization failed"))
+              break
+          }
         }
-      }
 
-      worker.onerror = (error) => {
-        console.error("[v0] Worker error:", error)
-        setStatus((prev) => ({
-          ...prev,
-          isProcessing: false,
-          error: "Worker initialization failed",
-        }))
-        initializationPromiseRef.current = null
-        reject(new Error("Worker initialization failed"))
-      }
+        worker.onerror = (error) => {
+          console.error("[v0] Worker error:", error)
+          setStatus((prev) => ({
+            ...prev,
+            isProcessing: false,
+            error: "Worker initialization failed",
+          }))
+          initializationPromiseRef.current = null
+          reject(new Error("Worker initialization failed"))
+        }
 
-      setStatus((prev) => ({ ...prev, isProcessing: true, progress: 0, currentStep: "Starting..." }))
-      worker.postMessage({ type: "init" })
+        setStatus((prev) => ({ ...prev, isProcessing: true, progress: 0, currentStep: "Starting..." }))
+        worker.postMessage({ type: "init" })
+      } catch (error) {
+        console.error("[v0] Failed to create worker:", error)
+        reject(error)
+      }
     })
 
     initializationPromiseRef.current = initPromise
