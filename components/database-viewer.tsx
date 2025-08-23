@@ -34,6 +34,8 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
     // setActiveTab("overview") - removed this line
   }
 
+
+
   const extractPropertySets = () => {
     const allPsets: any[] = []
 
@@ -396,6 +398,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
               {specialTables.classifications.length} classifications
             </Badge>
           )}
+
         </div>
       </div>
 

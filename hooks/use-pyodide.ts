@@ -220,6 +220,54 @@ export function usePyodide() {
     [isInitialized],
   )
 
+  const exportSQLite = useCallback(
+    async (): Promise<Uint8Array> => {
+      if (!workerRef.current || !isInitialized) {
+        throw new Error("Pyodide not initialized")
+      }
+
+      return new Promise<Uint8Array>((resolve, reject) => {
+        const worker = workerRef.current!
+
+        worker.postMessage({ type: "export_sqlite" })
+
+        const timeout = setTimeout(() => {
+          reject(new Error("SQLite export timeout"))
+        }, 30000) // 30 second timeout
+
+        const originalOnMessage = worker.onmessage
+
+        worker.onmessage = (event) => {
+          const { type, data } = event.data as any
+
+          console.log("[v0] Export worker response:", { type, data })
+
+          if (type === "sqlite_export") {
+            clearTimeout(timeout)
+            worker.onmessage = originalOnMessage
+            // Convert ArrayBuffer to Uint8Array
+            const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : new Uint8Array(data)
+            resolve(bytes)
+          } else if (type === "error") {
+            clearTimeout(timeout)
+            worker.onmessage = originalOnMessage
+            reject(new Error(data.message || "SQLite export failed"))
+          } else if (originalOnMessage) {
+            originalOnMessage.call(worker, event)
+          }
+        }
+
+        worker.onerror = (error) => {
+          clearTimeout(timeout)
+          console.error("[v0] Export worker error:", error)
+          worker.onmessage = originalOnMessage
+          reject(new Error("Worker export failed"))
+        }
+      })
+    },
+    [isInitialized],
+  )
+
   const cleanup = useCallback(() => {
     console.log("[v0] Cleaning up Pyodide worker")
     if (workerRef.current) {
@@ -251,6 +299,7 @@ export function usePyodide() {
     initializePyodide,
     processIfcFile,
     executeQuery,
+    exportSQLite,
     cleanup,
   }
 }

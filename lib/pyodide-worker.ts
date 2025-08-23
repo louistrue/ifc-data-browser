@@ -2,7 +2,7 @@
 // This runs in a separate thread to avoid blocking the main UI
 
 export interface PyodideMessage {
-  type: "init" | "process" | "progress" | "complete" | "error" | "execute_query"
+  type: "init" | "process" | "progress" | "complete" | "error" | "execute_query" | "export_sqlite" | "sqlite_export"
   data?: any
   progress?: number
   step?: string
@@ -46,6 +46,9 @@ export const createPyodideWorker = async () => {
             break;
           case 'execute_query':
             await executeQuery(data.query);
+            break;
+          case 'export_sqlite':
+            await exportSQLiteDatabase();
             break;
         }
       } catch (error) {
@@ -789,9 +792,43 @@ except Exception as e:
         console.error('[v0] Query execution failed:', error);
         self.postMessage({
           type: 'error',
-          data: { 
+          data: {
             message: 'Failed to execute query: ' + error.message,
-            stack: error.stack 
+            stack: error.stack
+          }
+        });
+      }
+    }
+
+    async function exportSQLiteDatabase() {
+      try {
+        // Exporting SQLite database silently
+
+        if (!pyodide) {
+          throw new Error('Pyodide not initialized');
+        }
+
+        if (!sqliteDbPath) {
+          throw new Error('No SQLite database available. Please process an IFC file first.');
+        }
+
+        // Read the SQLite database file from Pyodide's virtual filesystem
+        const bytes = pyodide.FS.readFile(sqliteDbPath);
+
+        // Send the database bytes back to the main thread
+        // Use transferrable ArrayBuffer for better performance
+        self.postMessage({
+          type: 'sqlite_export',
+          data: bytes
+        }, [bytes.buffer]);
+
+      } catch (error) {
+        console.error('[v0] SQLite export failed:', error);
+        self.postMessage({
+          type: 'error',
+          data: {
+            message: 'Failed to export SQLite database: ' + (error && error.message ? error.message : String(error)),
+            stack: error && error.stack ? error.stack : undefined
           }
         });
       }

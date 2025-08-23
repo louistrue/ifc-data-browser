@@ -101,7 +101,12 @@ export default function IFCDataBrowser() {
 
   return (
     <div className="min-h-screen retro-desktop">
-      <Header showOsToggle={currentView === "upload"} />
+      <Header
+        showOsToggle={currentView === "upload"}
+        usePyodide={usePyodideHook}
+        fileName={uploadedFile?.name}
+        hasProcessedData={!!databaseData}
+      />
 
       <main className="min-h-screen">
         {currentView === "upload" && (

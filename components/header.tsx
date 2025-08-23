@@ -2,10 +2,17 @@
 
 import React from "react"
 import { Button } from "@/components/ui/button"
-import { MoonIcon, SunIcon, MonitorCog, MonitorSmartphone } from "lucide-react"
+import { MoonIcon, SunIcon, MonitorCog, MonitorSmartphone, DownloadIcon } from "lucide-react"
 import { useTheme } from "@/components/theme-provider"
 
-export function Header({ showOsToggle = true }: { showOsToggle?: boolean }) {
+interface HeaderProps {
+  showOsToggle?: boolean
+  usePyodide?: any
+  fileName?: string
+  hasProcessedData?: boolean
+}
+
+export function Header({ showOsToggle = true, usePyodide, fileName, hasProcessedData = false }: HeaderProps) {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = React.useState(false)
 
@@ -27,14 +34,36 @@ export function Header({ showOsToggle = true }: { showOsToggle?: boolean }) {
     }
   }, [uiTheme])
 
+  const handleExportSQLite = async () => {
+    if (!usePyodide) return
+
+    try {
+      const bytes: Uint8Array = await usePyodide.exportSQLite()
+      const blob = new Blob([bytes], { type: "application/x-sqlite3" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      const base = (fileName || "database").replace(/\.ifc$/i, "")
+      a.href = url
+      a.download = `${base}.sqlite`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error("Export failed:", error)
+    }
+  }
+
   return (
     <header className="retro-menu-bar">
-      <div className="container mx-auto px-4 h-8 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-5 h-5 bg-primary/90 rounded-[6px] flex items-center justify-center shadow-sm">
-            <span className="text-primary-foreground font-bold text-[11px] leading-none">IFC</span>
+      <div className="h-8 flex items-center justify-between px-4">
+        <div className="flex items-center">
+          <div className="flex items-center gap-2 select-none">
+            <div className="w-6 h-6 rounded-[6px] border border-primary/40 bg-transparent flex items-center justify-center shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]">
+              <span className="font-black text-[10px] leading-none tracking-wider text-primary">IFC</span>
+            </div>
+            <span className="font-inter font-semibold text-[13px] leading-none tracking-tight text-foreground/90">
+              Data Browser
+            </span>
           </div>
-          <span className="font-serif font-bold text-sm text-foreground">IFC Data Browser</span>
         </div>
 
         <div className="flex items-center gap-1">
@@ -48,6 +77,18 @@ export function Header({ showOsToggle = true }: { showOsToggle?: boolean }) {
               <SunIcon className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <MoonIcon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
               <span className="sr-only">Toggle theme</span>
+            </Button>
+          )}
+          {mounted && hasProcessedData && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleExportSQLite}
+              title="Export SQLite database"
+              className="h-6 px-2 text-xs"
+            >
+              <DownloadIcon className="h-3 w-3 mr-1" />
+              .sqlite
             </Button>
           )}
         </div>
