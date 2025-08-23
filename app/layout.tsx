@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next"
 import { Inter, Source_Sans_3 } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { Footer } from "@/components/footer"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -38,7 +39,10 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${sourceSans.variable} antialiased`} suppressHydrationWarning>
       <body className="font-inter">
         <ThemeProvider>
-          {children}
+          <div className="flex flex-col min-h-screen">
+            {children}
+            <Footer />
+          </div>
         </ThemeProvider>
       </body>
     </html>
