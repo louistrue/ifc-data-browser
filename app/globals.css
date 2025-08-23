@@ -397,6 +397,15 @@
     backdrop-filter: saturate(1.2) blur(2px);
   }
 
+  .retro-footer {
+    height: 24px;
+    background: linear-gradient(to top,
+        color-mix(in oklab, var(--color-card), white 12%),
+        color-mix(in oklab, var(--color-card), black 4%));
+    border-top: 1px solid var(--color-border);
+    backdrop-filter: saturate(1.2) blur(2px);
+  }
+
   @keyframes retro-pop {
     0% {
       opacity: 0;
@@ -513,5 +522,15 @@
   .theme-xp .retro-control.green {
     background: #45c742;
     border-color: #2d9f2a;
+  }
+
+  .theme-xp .retro-footer {
+    background: linear-gradient(to top, #3b6cd0, #1d52b5);
+    border-top-color: #0c2f6a;
+    color: #ffffff;
+  }
+
+  .theme-xp .retro-footer a {
+    color: #ffffff;
   }
 }

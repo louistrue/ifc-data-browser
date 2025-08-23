@@ -5,6 +5,7 @@ import { FileUploadZone } from "@/components/file-upload-zone"
 import { ProcessingStatus } from "@/components/processing-status"
 import { DatabaseViewer } from "@/components/database-viewer"
 import { Header } from "@/components/header"
+import Footer from "@/components/footer"
 import { usePyodide } from "@/hooks/use-pyodide"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -100,7 +101,7 @@ export default function IFCDataBrowser() {
   }
 
   return (
-    <div className="min-h-screen retro-desktop">
+    <div className="min-h-screen retro-desktop flex flex-col">
       <Header
         showOsToggle={currentView === "upload"}
         usePyodide={usePyodideHook}
@@ -108,7 +109,7 @@ export default function IFCDataBrowser() {
         hasProcessedData={!!databaseData}
       />
 
-      <main className="min-h-screen">
+      <main className="flex-1">
         {currentView === "upload" && (
           <>
             {/* Retro Hero Window */}
@@ -406,6 +407,7 @@ export default function IFCDataBrowser() {
           <DatabaseViewer data={databaseData} onBackToUpload={handleBackToUpload} fileName={uploadedFile?.name} usePyodide={usePyodideHook} />
         )}
       </main>
+      <Footer />
     </div>
   )
 }
