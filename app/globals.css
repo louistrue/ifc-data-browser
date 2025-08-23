@@ -397,6 +397,27 @@
     backdrop-filter: saturate(1.2) blur(2px);
   }
 
+  .retro-footer {
+    height: 24px;
+    background: linear-gradient(to top,
+        color-mix(in oklab, var(--color-card), black 4%),
+        color-mix(in oklab, var(--color-card), white 12%));
+    border-top: 1px solid var(--color-border);
+    backdrop-filter: saturate(1.2) blur(2px);
+  }
+
+  .retro-footer .footer-link {
+    @apply text-muted-foreground hover:text-foreground transition-colors;
+  }
+
+  .retro-footer .footer-separator {
+    opacity: 0.4;
+  }
+
+  .retro-footer .footer-text {
+    @apply text-muted-foreground;
+  }
+
   @keyframes retro-pop {
     0% {
       opacity: 0;
@@ -480,6 +501,28 @@
   }
 
   /* Windows XP theme overrides */
+  .theme-xp .retro-footer {
+    background: linear-gradient(to top, #1750aa, #2b64d6);
+    border-top-color: #0c3d91;
+    color: #ffffff;
+  }
+
+  .theme-xp .retro-footer .footer-link {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .theme-xp .retro-footer .footer-link:hover {
+    color: #ffffff;
+  }
+
+  .theme-xp .retro-footer .footer-separator {
+    opacity: 0.6;
+  }
+
+  .theme-xp .retro-footer .footer-text {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
   .theme-xp .retro-titlebar {
     background: linear-gradient(to bottom, #4f78c7, #2c4a97);
     border-bottom-color: #1f3a7a;
