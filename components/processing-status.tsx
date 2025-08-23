@@ -34,7 +34,7 @@ export function ProcessingStatus({
     <div className="max-w-2xl mx-auto">
       <Card>
         <CardHeader className="text-center">
-          <CardTitle className="font-serif text-2xl text-foreground">
+          <CardTitle className="font-inter text-2xl text-foreground">
             {error ? "Processing Failed" : "Processing IFC File"}
           </CardTitle>
           <p className="text-muted-foreground">
@@ -93,9 +93,8 @@ export function ProcessingStatus({
                     </div>
                     <div className="flex-1">
                       <p
-                        className={`text-sm font-medium ${
-                          index <= currentStepIndex ? "text-foreground" : "text-muted-foreground"
-                        }`}
+                        className={`text-sm font-medium ${index <= currentStepIndex ? "text-foreground" : "text-muted-foreground"
+                          }`}
                       >
                         {step.name}
                       </p>

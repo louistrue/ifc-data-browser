@@ -306,7 +306,7 @@ export function DataTable({ tableName, data, onBack, customTitle, description }:
               Back
             </Button>
             <div>
-              <CardTitle className="font-serif text-xl">{customTitle || tableName}</CardTitle>
+              <CardTitle className="font-inter text-xl">{customTitle || tableName}</CardTitle>
               {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
             </div>
             <Badge variant="secondary">

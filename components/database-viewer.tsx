@@ -367,7 +367,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
           </Button>
           <div className="flex items-center space-x-2">
             <DatabaseIcon className="w-5 h-5 text-primary" />
-            <h1 className="font-serif text-2xl font-bold text-foreground">IFC Database Browser</h1>
+            <h1 className="font-inter text-2xl font-bold text-foreground">IFCsql</h1>
           </div>
         </div>
         <div className="flex items-center space-x-2">
@@ -533,7 +533,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
                   <div>
                     <h4 className="font-medium mb-2">Classifications</h4>
                     <p className="text-sm text-muted-foreground">
-                      {specialTables.classifications.length} classified elements with IFC types and predefined types
+                      {specialTables.classifications.length} classified elements with IfcClassificationReference
                     </p>
                   </div>
                 )}
@@ -546,18 +546,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
                     </p>
                   </div>
                 )}
-                <div>
-                  <h4 className="font-medium mb-2">Structural Properties</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Load bearing and external wall information integrated into entity tables for structural analysis
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-2">Relationships</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Full IFC relationship data with inverse references for complete building model traversal
-                  </p>
-                </div>
+
               </CardContent>
             </Card>
           </div>

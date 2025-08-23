@@ -1,6 +1,7 @@
 {
-  "name": "my-v0-project",
+  "name": "ifc-data-browser",
   "version": "0.1.0",
+  "description": "A modern web application for exploring and analyzing IFC building model files using WebAssembly and client-side processing",
   "private": true,
   "scripts": {
     "build": "next build",

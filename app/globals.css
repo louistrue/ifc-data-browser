@@ -4,81 +4,141 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(1 0 0); /* #ffffff */
-  --foreground: oklch(0.345 0 0); /* #4b5563 */
-  --card: oklch(0.98 0 0); /* #f9fafb */
-  --card-foreground: oklch(0.345 0 0); /* #4b5563 */
-  --popover: oklch(1 0 0); /* #ffffff */
-  --popover-foreground: oklch(0.345 0 0); /* #4b5563 */
-  --primary: oklch(0.55 0.15 200); /* #0891b2 cyan-600 */
-  --primary-foreground: oklch(1 0 0); /* #ffffff */
-  --secondary: oklch(0.65 0.25 330); /* #ec4899 pink-500 */
-  --secondary-foreground: oklch(1 0 0); /* #ffffff */
-  --muted: oklch(0.98 0 0); /* #f9fafb */
-  --muted-foreground: oklch(0.345 0 0); /* #4b5563 */
-  --accent: oklch(0.65 0.25 330); /* #ec4899 pink-500 */
-  --accent-foreground: oklch(1 0 0); /* #ffffff */
-  --destructive: oklch(0.55 0.22 25); /* #dc2626 red-600 */
-  --destructive-foreground: oklch(1 0 0); /* #ffffff */
-  --border: oklch(0.92 0 0); /* #e5e7eb */
-  --input: oklch(1 0 0); /* #ffffff */
-  --ring: oklch(0.55 0.15 200 / 0.5); /* rgba(8, 145, 178, 0.5) */
-  --chart-1: oklch(0.55 0.15 200); /* #0891b2 */
-  --chart-2: oklch(0.65 0.25 330); /* #ec4899 */
-  --chart-3: oklch(0.55 0.22 25); /* #dc2626 */
-  --chart-4: oklch(0.65 0.18 85); /* #f59e0b */
-  --chart-5: oklch(0.345 0 0); /* #4b5563 */
+  --background: oklch(1 0 0);
+  /* #ffffff */
+  --foreground: oklch(0.345 0 0);
+  /* #4b5563 */
+  --card: oklch(0.98 0 0);
+  /* #f9fafb */
+  --card-foreground: oklch(0.345 0 0);
+  /* #4b5563 */
+  --popover: oklch(1 0 0);
+  /* #ffffff */
+  --popover-foreground: oklch(0.345 0 0);
+  /* #4b5563 */
+  --primary: oklch(0.55 0.15 200);
+  /* #0891b2 cyan-600 */
+  --primary-foreground: oklch(1 0 0);
+  /* #ffffff */
+  --secondary: oklch(0.65 0.25 330);
+  /* #ec4899 pink-500 */
+  --secondary-foreground: oklch(1 0 0);
+  /* #ffffff */
+  --muted: oklch(0.98 0 0);
+  /* #f9fafb */
+  --muted-foreground: oklch(0.345 0 0);
+  /* #4b5563 */
+  --accent: oklch(0.65 0.25 330);
+  /* #ec4899 pink-500 */
+  --accent-foreground: oklch(1 0 0);
+  /* #ffffff */
+  --destructive: oklch(0.55 0.22 25);
+  /* #dc2626 red-600 */
+  --destructive-foreground: oklch(1 0 0);
+  /* #ffffff */
+  --border: oklch(0.92 0 0);
+  /* #e5e7eb */
+  --input: oklch(1 0 0);
+  /* #ffffff */
+  --ring: oklch(0.55 0.15 200 / 0.5);
+  /* rgba(8, 145, 178, 0.5) */
+  --chart-1: oklch(0.55 0.15 200);
+  /* #0891b2 */
+  --chart-2: oklch(0.65 0.25 330);
+  /* #ec4899 */
+  --chart-3: oklch(0.55 0.22 25);
+  /* #dc2626 */
+  --chart-4: oklch(0.65 0.18 85);
+  /* #f59e0b */
+  --chart-5: oklch(0.345 0 0);
+  /* #4b5563 */
   --radius: 0.5rem;
-  --sidebar: oklch(0.98 0 0); /* #f9fafb */
-  --sidebar-foreground: oklch(0.345 0 0); /* #4b5563 */
-  --sidebar-primary: oklch(0.55 0.15 200); /* #0891b2 */
-  --sidebar-primary-foreground: oklch(1 0 0); /* #ffffff */
-  --sidebar-accent: oklch(0.65 0.25 330); /* #ec4899 */
-  --sidebar-accent-foreground: oklch(1 0 0); /* #ffffff */
-  --sidebar-border: oklch(0.92 0 0); /* #e5e7eb */
-  --sidebar-ring: oklch(0.55 0.15 200 / 0.5); /* rgba(8, 145, 178, 0.5) */
-  --font-playfair: "Playfair Display", serif;
+  --sidebar: oklch(0.98 0 0);
+  /* #f9fafb */
+  --sidebar-foreground: oklch(0.345 0 0);
+  /* #4b5563 */
+  --sidebar-primary: oklch(0.55 0.15 200);
+  /* #0891b2 */
+  --sidebar-primary-foreground: oklch(1 0 0);
+  /* #ffffff */
+  --sidebar-accent: oklch(0.65 0.25 330);
+  /* #ec4899 */
+  --sidebar-accent-foreground: oklch(1 0 0);
+  /* #ffffff */
+  --sidebar-border: oklch(0.92 0 0);
+  /* #e5e7eb */
+  --sidebar-ring: oklch(0.55 0.15 200 / 0.5);
+  /* rgba(8, 145, 178, 0.5) */
+  --font-inter: "Inter", sans-serif;
   --font-source-sans: "Source Sans Pro", sans-serif;
 }
 
 .dark {
-  --background: oklch(0.12 0 0); /* Dark background */
-  --foreground: oklch(0.95 0 0); /* Light text */
-  --card: oklch(0.15 0 0); /* Dark card background */
-  --card-foreground: oklch(0.95 0 0); /* Light card text */
-  --popover: oklch(0.12 0 0); /* Dark popover */
-  --popover-foreground: oklch(0.95 0 0); /* Light popover text */
-  --primary: oklch(0.6 0.18 200); /* Brighter cyan for dark mode */
-  --primary-foreground: oklch(0.12 0 0); /* Dark text on primary */
-  --secondary: oklch(0.7 0.28 330); /* Brighter pink for dark mode */
-  --secondary-foreground: oklch(0.12 0 0); /* Dark text on secondary */
-  --muted: oklch(0.2 0 0); /* Dark muted background */
-  --muted-foreground: oklch(0.7 0 0); /* Light muted text */
-  --accent: oklch(0.7 0.28 330); /* Brighter pink accent */
-  --accent-foreground: oklch(0.12 0 0); /* Dark text on accent */
-  --destructive: oklch(0.6 0.25 25); /* Brighter red for dark mode */
-  --destructive-foreground: oklch(0.95 0 0); /* Light text on destructive */
-  --border: oklch(0.25 0 0); /* Dark border */
-  --input: oklch(0.15 0 0); /* Dark input background */
-  --ring: oklch(0.6 0.18 200 / 0.5); /* Primary ring with opacity */
-  --chart-1: oklch(0.6 0.18 200); /* Brighter chart colors for dark mode */
+  --background: oklch(0.12 0 0);
+  /* Dark background */
+  --foreground: oklch(0.95 0 0);
+  /* Light text */
+  --card: oklch(0.15 0 0);
+  /* Dark card background */
+  --card-foreground: oklch(0.95 0 0);
+  /* Light card text */
+  --popover: oklch(0.12 0 0);
+  /* Dark popover */
+  --popover-foreground: oklch(0.95 0 0);
+  /* Light popover text */
+  --primary: oklch(0.6 0.18 200);
+  /* Brighter cyan for dark mode */
+  --primary-foreground: oklch(0.12 0 0);
+  /* Dark text on primary */
+  --secondary: oklch(0.7 0.28 330);
+  /* Brighter pink for dark mode */
+  --secondary-foreground: oklch(0.12 0 0);
+  /* Dark text on secondary */
+  --muted: oklch(0.2 0 0);
+  /* Dark muted background */
+  --muted-foreground: oklch(0.7 0 0);
+  /* Light muted text */
+  --accent: oklch(0.7 0.28 330);
+  /* Brighter pink accent */
+  --accent-foreground: oklch(0.12 0 0);
+  /* Dark text on accent */
+  --destructive: oklch(0.6 0.25 25);
+  /* Brighter red for dark mode */
+  --destructive-foreground: oklch(0.95 0 0);
+  /* Light text on destructive */
+  --border: oklch(0.25 0 0);
+  /* Dark border */
+  --input: oklch(0.15 0 0);
+  /* Dark input background */
+  --ring: oklch(0.6 0.18 200 / 0.5);
+  /* Primary ring with opacity */
+  --chart-1: oklch(0.6 0.18 200);
+  /* Brighter chart colors for dark mode */
   --chart-2: oklch(0.7 0.28 330);
   --chart-3: oklch(0.6 0.25 25);
   --chart-4: oklch(0.7 0.2 85);
   --chart-5: oklch(0.7 0 0);
-  --sidebar: oklch(0.1 0 0); /* Darker sidebar */
-  --sidebar-foreground: oklch(0.95 0 0); /* Light sidebar text */
-  --sidebar-primary: oklch(0.6 0.18 200); /* Primary sidebar color */
-  --sidebar-primary-foreground: oklch(0.12 0 0); /* Dark text on primary */
-  --sidebar-accent: oklch(0.7 0.28 330); /* Accent sidebar color */
-  --sidebar-accent-foreground: oklch(0.12 0 0); /* Dark text on accent */
-  --sidebar-border: oklch(0.25 0 0); /* Dark sidebar border */
-  --sidebar-ring: oklch(0.6 0.18 200 / 0.5); /* Primary ring for sidebar */
+  --sidebar: oklch(0.1 0 0);
+  /* Darker sidebar */
+  --sidebar-foreground: oklch(0.95 0 0);
+  /* Light sidebar text */
+  --sidebar-primary: oklch(0.6 0.18 200);
+  /* Primary sidebar color */
+  --sidebar-primary-foreground: oklch(0.12 0 0);
+  /* Dark text on primary */
+  --sidebar-accent: oklch(0.7 0.28 330);
+  /* Accent sidebar color */
+  --sidebar-accent-foreground: oklch(0.12 0 0);
+  /* Dark text on accent */
+  --sidebar-border: oklch(0.25 0 0);
+  /* Dark sidebar border */
+  --sidebar-ring: oklch(0.6 0.18 200 / 0.5);
+  /* Primary ring for sidebar */
 }
 
 @theme inline {
-  --font-serif: var(--font-playfair);
-  --font-sans: var(--font-source-sans);
+  --font-sans: var(--font-inter), var(--font-source-sans);
+  --font-inter: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
   --color-background: var(--background);
@@ -123,6 +183,7 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }

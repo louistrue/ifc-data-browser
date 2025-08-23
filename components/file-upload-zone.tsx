@@ -84,7 +84,7 @@ export function FileUploadZone({ onFileUpload, disabled = false }: FileUploadZon
               <div className="space-y-2">
                 <h3
                   className={cn(
-                    "font-serif text-xl font-semibold",
+                    "font-inter text-xl font-semibold",
                     disabled ? "text-muted-foreground" : "text-foreground",
                   )}
                 >
