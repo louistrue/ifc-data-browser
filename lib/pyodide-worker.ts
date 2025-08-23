@@ -196,94 +196,346 @@ def process_ifc_to_sqlite(file_content, filename):
         db = ifcopenshell.sql.sqlite(output_path)
         print(f"Database opened successfully. Schema: {db.schema}")
         
-        # Extract comprehensive entity information from the SQLite database
-        print("Extracting entity information from SQLite database...")
+        # Extract entity information from major types only for performance
+        print("Extracting key entity information...")
         entities = {}
         total_entities = 0
-        
+
         # Get all available entity types from the database
         cursor = db.db.cursor()
         cursor.execute("SELECT DISTINCT ifc_class FROM id_map ORDER BY ifc_class")
         available_types = [row[0] for row in cursor.fetchall()]
-        print(f"Available entity types in database: {len(available_types)}")
-        
-        # Process each entity type
-        for ifc_type in available_types:
+
+        # Process major architectural/building elements, materials, quantities, and classifications
+        major_types = [
+            'IfcBuilding', 'IfcBuildingStorey', 'IfcWall', 'IfcSlab', 'IfcColumn', 'IfcBeam', 'IfcDoor', 'IfcWindow', 'IfcFurniture', 'IfcSpace',
+            'IfcMaterial', 'IfcMaterialConstituent', 'IfcMaterialConstituentSet', 'IfcMaterialLayer', 'IfcMaterialLayerSet',
+            'IfcQuantityLength', 'IfcQuantityVolume', 'IfcQuantityArea', 'IfcQuantityCount', 'IfcQuantityWeight', 'IfcPhysicalComplexQuantity',
+            'IfcClassification', 'IfcClassificationReference', 'IfcRelAssociatesMaterial', 'IfcMaterialDefinition'
+        ]
+        types_to_process = [t for t in available_types if t in major_types]
+
+        print(f"Processing {len(types_to_process)} major entity types")
+
+        # Process each major entity type
+        for ifc_type in types_to_process:
             try:
                 elements = db.by_type(ifc_type)
                 if elements:
                     entities[ifc_type] = []
-                    limit = min(100, len(elements))
+                    limit = len(elements)
                     
-                    for i, element in enumerate(elements[:limit]):
+                    for element in elements[:limit]:
                         try:
-                            # Get comprehensive entity info
-                            entity_info = element.get_info(recursive=False, scalar_only=True)
-                            
-                            # Add essential fields
-                            entity_info.update({
-                                'id': element.id(),
-                                'Type': element.is_a()
-                            })
-                            
-                            # Get relationships count from inverses
+                            # Use get_info() to get ALL attributes, with robust error handling
                             try:
-                                inverses = db.get_inverse(element)
-                                entity_info['RelationshipCount'] = len(inverses) if inverses else 0
-                            except:
-                                entity_info['RelationshipCount'] = 0
-                            
-                            # Check for load bearing and external properties
+                                # Try get_info() first - this is the standard way to get all attributes
+                                # Use recursive=True and scalar_only=False to resolve "Empty Object" references
+                                entity_info = element.get_info(recursive=True, scalar_only=False)
+
+                                print(f"DEBUG: get_info() returned {len(entity_info)} attributes for {element.is_a()} #{element.id()}")
+                                print(f"DEBUG: Attribute names: {list(entity_info.keys())}")
+
+                                # Ensure essential fields are present (get_info() might miss some)
+                                entity_info.update({
+                                    'id': element.id(),
+                                    'Type': element.is_a(),
+                                    'Name': getattr(element, 'Name', None) or str(element.id())
+                                })
+
+                                # Add GlobalId if not present
+                                if 'GlobalId' not in entity_info:
+                                    entity_info['GlobalId'] = getattr(element, 'GlobalId', None)
+
+                                # Add other common IFC attributes that might be missing
+                                common_attrs = ['ObjectType', 'Tag', 'PredefinedType', 'Description', 'LongName']
+                                for attr_name in common_attrs:
+                                    if attr_name not in entity_info and hasattr(element, attr_name):
+                                        try:
+                                            attr_value = getattr(element, attr_name)
+                                            if attr_value is not None:
+                                                entity_info[attr_name] = attr_value
+                                                print(f"Added missing common attribute {attr_name}: {attr_value}")
+                                        except Exception as attr_get_error:
+                                            print(f"Failed to get {attr_name}: {attr_get_error}")
+
+                            except Exception as get_info_error:
+                                print(f"get_info() failed for {element.is_a()} #{element.id()}: {get_info_error}")
+                                # Fallback: Create basic info structure
+                                entity_info = {
+                                    'id': element.id(),
+                                    'Type': element.is_a(),
+                                    'Name': getattr(element, 'Name', None) or str(element.id()),
+                                    'GlobalId': getattr(element, 'GlobalId', None)
+                                }
+
+                                # Add common attributes even in fallback
+                                common_attrs = ['ObjectType', 'Tag', 'PredefinedType', 'Description', 'LongName']
+                                for attr_name in common_attrs:
+                                    if hasattr(element, attr_name):
+                                        try:
+                                            attr_value = getattr(element, attr_name)
+                                            if attr_value is not None:
+                                                entity_info[attr_name] = attr_value
+                                                print(f"Added fallback common attribute {attr_name}: {attr_value}")
+                                        except Exception as attr_get_error:
+                                            print(f"Failed to get fallback {attr_name}: {attr_get_error}")
+
+                            # Now enhance with direct attribute access for any missing data
                             try:
-                                cursor.execute("SELECT name, value FROM psets WHERE ifc_id = ? AND (name LIKE '%LoadBearing%' OR name LIKE '%IsExternal%')", (element.id(),))
-                                structural_props = cursor.fetchall()
-                                for prop_name, prop_value in structural_props:
-                                    if 'loadbearing' in prop_name.lower():
-                                        entity_info['is_loadbearing'] = bool(prop_value)
-                                    elif 'external' in prop_name.lower():
-                                        entity_info['is_external'] = bool(prop_value)
-                            except:
-                                pass
-                            
+                                attr_count = element.attribute_count()
+                                print(f"Processing {attr_count} attributes for {element.is_a()} #{element.id()}")
+                                print(f"Current entity_info keys: {list(entity_info.keys())}")
+
+                                # Get all attribute names to ensure we don't miss any
+                                all_attr_names = set()
+                                for i in range(attr_count):
+                                    try:
+                                        attr = element.attribute_by_index(i)
+                                        attr_name = attr.name()
+                                        all_attr_names.add(attr_name)
+                                    except:
+                                        continue
+
+                                # Ensure all attributes are represented using proper IFC access
+                                for i in range(attr_count):
+                                    try:
+                                        attr = element.attribute_by_index(i)
+                                        attr_name = attr.name()
+
+                                        # Skip if we already have this attribute from get_info()
+                                        if attr_name in entity_info and entity_info[attr_name] is not None:
+                                            continue
+
+                                        # Use proper IFC attribute access
+                                        raw_value = element[i]
+                                        if raw_value is not None:
+                                            entity_info[attr_name] = raw_value
+                                            print(f"Added missing attribute {attr_name}: {type(raw_value)}")
+                                    except Exception as attr_access_error:
+                                        print(f"Attribute access failed for index {i}: {attr_access_error}")
+                                        continue
+
+                                print(f"After attribute access, entity_info keys: {list(entity_info.keys())}")
+
+                                # Enhanced processing for complex IFC relationships
+                                for i in range(attr_count):
+                                    try:
+                                        attr = element.attribute_by_index(i)
+                                        attr_name = attr.name()
+
+                                        if attr_name in ['ObjectPlacement', 'Representation', 'OwnerHistory']:
+                                            raw_value = element[i]
+                                            if raw_value is not None and hasattr(raw_value, 'id') and hasattr(raw_value, 'is_a'):
+                                                # Enhanced entity reference with additional details
+                                                entity_ref = {
+                                                    'id': raw_value.id(),
+                                                    'type': raw_value.is_a(),
+                                                    'name': getattr(raw_value, 'Name', None) or str(raw_value.id())
+                                                }
+
+                                                # Add specific details for common IFC objects
+                                                if attr_name == 'ObjectPlacement':
+                                                    try:
+                                                        if hasattr(raw_value, 'RelativePlacement'):
+                                                            rel_placement = raw_value.RelativePlacement
+                                                            if hasattr(rel_placement, 'Location'):
+                                                                location = rel_placement.Location
+                                                                if hasattr(location, 'Coordinates'):
+                                                                    coords = location.Coordinates
+                                                                    if hasattr(coords, '__len__') and len(coords) >= 3:
+                                                                        entity_ref['coordinates'] = [float(coords[0]), float(coords[1]), float(coords[2])]
+                                                    except Exception as coord_error:
+                                                        print(f"Coordinate extraction failed: {coord_error}")
+
+                                                elif attr_name == 'Representation':
+                                                    try:
+                                                        if hasattr(raw_value, 'Representations'):
+                                                            reps = raw_value.Representations
+                                                            entity_ref['representation_count'] = len(reps) if hasattr(reps, '__len__') else 0
+                                                    except Exception as rep_error:
+                                                        print(f"Representation extraction failed: {rep_error}")
+
+                                                elif attr_name == 'OwnerHistory':
+                                                    try:
+                                                        if hasattr(raw_value, 'OwningUser'):
+                                                            user = raw_value.OwningUser
+                                                            if hasattr(user, 'ThePerson'):
+                                                                person = user.ThePerson
+                                                                if hasattr(person, 'GivenName'):
+                                                                    entity_ref['user'] = f"{getattr(person, 'GivenName', '')} {getattr(person, 'FamilyName', '')}".strip()
+                                                    except Exception as owner_error:
+                                                        print(f"OwnerHistory extraction failed: {owner_error}")
+
+                                                entity_info[attr_name] = entity_ref
+
+                                    except Exception as attr_loop_error:
+                                        print(f"Attribute loop error at index {i}: {attr_loop_error}")
+                                        continue
+
+                            except Exception as extraction_error:
+                                print(f"Enhanced extraction failed for {element.is_a()} #{element.id()}: {extraction_error}")
+                                # Keep the entity_info we got from get_info(), don't lose data
+
+                            # Add specific quantity values for better display
+                            if element.is_a().startswith('IfcQuantity'):
+                                if hasattr(element, 'LengthValue') and element.LengthValue is not None:
+                                    entity_info['LengthValue'] = element.LengthValue
+                                if hasattr(element, 'AreaValue') and element.AreaValue is not None:
+                                    entity_info['AreaValue'] = element.AreaValue
+                                if hasattr(element, 'VolumeValue') and element.VolumeValue is not None:
+                                    entity_info['VolumeValue'] = element.VolumeValue
+                                if hasattr(element, 'CountValue') and element.CountValue is not None:
+                                    entity_info['CountValue'] = element.CountValue
+                                if hasattr(element, 'WeightValue') and element.WeightValue is not None:
+                                    entity_info['WeightValue'] = element.WeightValue
+
+                            # Add material-specific attributes
+                            if element.is_a().startswith('IfcMaterial'):
+                                if hasattr(element, 'Category'):
+                                    entity_info['Category'] = element.Category
+                                if hasattr(element, 'Description'):
+                                    entity_info['Description'] = element.Description
+                                if hasattr(element, 'Name'):
+                                    entity_info['MaterialName'] = element.Name
+                                entity_info['MaterialType'] = element.is_a()
+
+                            # Add material layer attributes
+                            if element.is_a().startswith('IfcMaterialLayer'):
+                                if hasattr(element, 'LayerThickness'):
+                                    entity_info['LayerThickness'] = element.LayerThickness
+                                if hasattr(element, 'Material'):
+                                    entity_info['Material'] = element.Material
+                                entity_info['LayerType'] = element.is_a()
+
+                            # Add material relationship attributes
+                            if element.is_a().startswith('IfcRelAssociatesMaterial'):
+                                if hasattr(element, 'RelatingMaterial'):
+                                    entity_info['RelatingMaterial'] = element.RelatingMaterial
+                                entity_info['RelationshipType'] = element.is_a()
+
+                            # Debug: Print all attributes we got
+                            print(f"Entity {element.is_a()} #{element.id()} has {len(entity_info)} attributes: {list(entity_info.keys())}")
+
                             entities[ifc_type].append(entity_info)
                             total_entities += 1
-                        except Exception as e:
-                            print(f"Error processing {ifc_type} entity {i}: {e}")
-                    
-                    print(f"Processed {len(entities[ifc_type])} {ifc_type} entities")
+                        except Exception as entity_error:
+                            print(f"Failed to process entity {ifc_type}: {entity_error}")
+                            # Skip problematic entities silently for performance
+                            continue
                     
             except Exception as e:
                 print(f"Error processing {ifc_type}: {e}")
         
-        # Get property sets data
-        print("Extracting property sets...")
-        cursor.execute("SELECT ifc_id, pset_name, name, value FROM psets ORDER BY ifc_id, pset_name, name")
-        pset_data = cursor.fetchall()
-        
+        # Get property sets data - simplified for performance
+        print("Extracting key properties...")
+        cursor.execute("SELECT COUNT(*) FROM psets")
+        total_pset_count = cursor.fetchone()[0]
+
+        # Only extract properties for major entity types
+        major_type_ids = set()
+        for ifc_type in types_to_process:
+            if ifc_type in entities:
+                for entity in entities[ifc_type]:
+                    major_type_ids.add(entity['id'])
+
+        # Process in batches to avoid SQLite parameter limit
+        pset_data = []
+        if major_type_ids:
+            batch_size = 500  # SQLite limit is around 999 parameters
+            ids_list = list(major_type_ids)
+            for i in range(0, len(ids_list), batch_size):
+                batch_ids = ids_list[i:i + batch_size]
+                placeholders = ','.join('?' * len(batch_ids))
+                cursor.execute(f"SELECT ifc_id, pset_name, name, value FROM psets WHERE ifc_id IN ({placeholders}) ORDER BY ifc_id", batch_ids)
+                pset_data.extend(cursor.fetchall())
+
+        # Enhanced property extraction with metadata
         properties = []
         for entity_id, pset_name, prop_name, prop_value in pset_data:
-            # Get entity type from id_map
-            cursor.execute("SELECT ifc_class FROM id_map WHERE ifc_id = ?", (entity_id,))
-            entity_type_result = cursor.fetchone()
-            entity_type = entity_type_result[0] if entity_type_result else 'Unknown'
-            
-            # Get entity name if available
-            try:
-                entity = db.by_id(entity_id)
-                entity_name = getattr(entity, 'Name', None) or getattr(entity, 'GlobalId', str(entity_id))
-            except:
-                entity_name = str(entity_id)
-            
-            properties.append({
+            property_info = {
                 'entity_id': entity_id,
-                'entity_type': entity_type,
-                'entity_name': entity_name,
                 'pset_name': pset_name,
                 'property_name': prop_name,
-                'property_value': prop_value
-            })
-        
-        print(f"Extracted {len(properties)} property entries")
+                'property_value': prop_value,
+                'property_type': 'Unknown',
+                'unit': None,
+                'category': 'Property'
+            }
+
+            # Determine property type and unit based on name and value
+            if isinstance(prop_value, (int, float)):
+                if any(keyword in prop_name.upper() for keyword in ['LENGTH', 'WIDTH', 'HEIGHT', 'DEPTH', 'THICKNESS', 'DIAMETER']):
+                    property_info['property_type'] = 'Length'
+                    property_info['unit'] = 'mm'
+                    property_info['category'] = 'Dimension'
+                elif any(keyword in prop_name.upper() for keyword in ['AREA', 'SURFACE']):
+                    property_info['property_type'] = 'Area'
+                    property_info['unit'] = 'm²'
+                    property_info['category'] = 'Dimension'
+                elif any(keyword in prop_name.upper() for keyword in ['VOLUME', 'CAPACITY']):
+                    property_info['property_type'] = 'Volume'
+                    property_info['unit'] = 'm³'
+                    property_info['category'] = 'Dimension'
+                elif any(keyword in prop_name.upper() for keyword in ['MASS', 'WEIGHT']):
+                    property_info['property_type'] = 'Mass'
+                    property_info['unit'] = 'kg'
+                    property_info['category'] = 'Physical'
+                elif any(keyword in prop_name.upper() for keyword in ['COST', 'PRICE', 'VALUE']):
+                    property_info['property_type'] = 'Cost'
+                    property_info['unit'] = 'EUR'
+                    property_info['category'] = 'Economic'
+                elif any(keyword in prop_name.upper() for keyword in ['COUNT', 'QUANTITY', 'NUMBER']):
+                    property_info['property_type'] = 'Count'
+                    property_info['unit'] = 'pcs'
+                    property_info['category'] = 'Quantity'
+                elif any(keyword in prop_name.upper() for keyword in ['LOAD', 'FORCE', 'STRESS']):
+                    property_info['property_type'] = 'Force'
+                    property_info['unit'] = 'kN'
+                    property_info['category'] = 'Structural'
+                else:
+                    property_info['property_type'] = 'Numeric'
+                    property_info['category'] = 'General'
+
+            elif isinstance(prop_value, str):
+                if prop_value.startswith('#'):
+                    property_info['property_type'] = 'Entity Reference'
+                    property_info['category'] = 'Reference'
+                elif any(keyword in prop_name.upper() for keyword in ['MATERIAL', 'FINISH', 'COLOR', 'TYPE']):
+                    property_info['property_type'] = 'Material'
+                    property_info['category'] = 'Material'
+                elif any(keyword in prop_name.upper() for keyword in ['CODE', 'STANDARD', 'SPECIFICATION']):
+                    property_info['property_type'] = 'Code'
+                    property_info['category'] = 'Specification'
+                elif any(keyword in prop_name.upper() for keyword in ['NAME', 'DESCRIPTION', 'LABEL']):
+                    property_info['property_type'] = 'Text'
+                    property_info['category'] = 'Identification'
+                else:
+                    property_info['property_type'] = 'Text'
+                    property_info['category'] = 'General'
+
+            elif isinstance(prop_value, bool):
+                property_info['property_type'] = 'Boolean'
+                property_info['category'] = 'Condition'
+            else:
+                property_info['property_type'] = 'Complex'
+                property_info['category'] = 'Complex'
+
+            # Add property set category based on name
+            if 'QTO_' in pset_name.upper() or 'QUANTITY' in pset_name.upper():
+                property_info['pset_category'] = 'Quantity'
+            elif 'PSET_' in pset_name.upper():
+                property_info['pset_category'] = 'Property Set'
+            elif any(keyword in pset_name.upper() for keyword in ['MATERIAL', 'FINISH', 'COLOR']):
+                property_info['pset_category'] = 'Material'
+            elif any(keyword in pset_name.upper() for keyword in ['STRUCTURAL', 'LOAD', 'FORCE']):
+                property_info['pset_category'] = 'Structural'
+            else:
+                property_info['pset_category'] = 'General'
+
+            properties.append(property_info)
+
+        print(f"Extracted {len(properties)} key properties (from {total_pset_count} total)")
         
         # Prepare result
         result = {
@@ -362,19 +614,94 @@ print(f"[DEBUG] SQLite database path set to: {sqlite_db_path}")
         
         let jsResult;
         try {
-          // First convert to JS
+          // Convert to JS with proper dict converter
           jsResult = result.toJs ? result.toJs({ dict_converter: Object.fromEntries }) : result;
-          
-          // Deep serialize to ensure no proxy objects remain
-          const serializedResult = JSON.parse(JSON.stringify(jsResult, (key, value) => {
-            // Handle any remaining proxy objects or special types
+
+          // Debug: Check what we have before serialization
+          console.log('[v0] Raw JS result type:', typeof jsResult);
+          console.log('[v0] Raw JS result keys:', Object.keys(jsResult));
+          console.log('[v0] Sample entity data:', jsResult.entities ? Object.keys(jsResult.entities)[0] : 'No entities');
+
+          // Convert PyProxy objects to plain JavaScript objects for worker communication
+          const convertPyProxyToJS = (obj, depth = 0) => {
+            if (!obj || typeof obj !== 'object') {
+              return obj;
+            }
+
+            // Prevent infinite recursion
+            if (depth > 10) {
+              console.warn('[v0] Max depth reached, returning string representation');
+              return String(obj);
+            }
+
+            // Handle PyProxy objects specifically
+            if (obj.constructor && obj.constructor.name === 'PyProxy') {
+              try {
+                const converted = obj.toJs ? obj.toJs({ dict_converter: Object.fromEntries }) : String(obj);
+                console.log('[v0] Converted PyProxy:', typeof converted, converted);
+                return convertPyProxyToJS(converted, depth + 1);
+              } catch (e) {
+                console.error('[v0] Error converting PyProxy:', e);
+                return String(obj);
+              }
+            }
+
+            // Handle arrays
+            if (Array.isArray(obj)) {
+              return obj.map(item => convertPyProxyToJS(item, depth + 1));
+            }
+
+            // Handle regular objects - preserve all properties
+            const result = {};
+            for (const [key, value] of Object.entries(obj)) {
+              // Special handling for complex IFC objects
+              if (key === 'OwnerHistory' || key === 'ObjectPlacement' || key === 'Representation') {
+                console.log('[v0] Processing complex object ' + key + ':', value, typeof value);
+              }
+              result[key] = convertPyProxyToJS(value, depth + 1);
+            }
+            return result;
+          };
+
+          console.log('[v0] Before conversion, sample entities:', jsResult.entities ? Object.keys(jsResult.entities)[0] : 'No entities');
+          if (jsResult.entities && jsResult.entities[Object.keys(jsResult.entities)[0]]) {
+            const firstEntity = jsResult.entities[Object.keys(jsResult.entities)[0]][0];
+            console.log('[v0] First entity before conversion:', firstEntity);
+            console.log('[v0] OwnerHistory before:', firstEntity.OwnerHistory);
+            console.log('[v0] ObjectPlacement before:', firstEntity.ObjectPlacement);
+            console.log('[v0] Representation before:', firstEntity.Representation);
+          }
+
+          jsResult = convertPyProxyToJS(jsResult);
+
+          console.log('[v0] After conversion, sample entities:', jsResult.entities ? Object.keys(jsResult.entities)[0] : 'No entities');
+          if (jsResult.entities && jsResult.entities[Object.keys(jsResult.entities)[0]]) {
+            const firstEntity = jsResult.entities[Object.keys(jsResult.entities)[0]][0];
+            console.log('[v0] First entity after conversion:', firstEntity);
+            console.log('[v0] OwnerHistory after:', firstEntity.OwnerHistory);
+            console.log('[v0] ObjectPlacement after:', firstEntity.ObjectPlacement);
+            console.log('[v0] Representation after:', firstEntity.Representation);
+          }
+
+          // Final JSON serialization with special handling for complex objects
+          jsResult = JSON.parse(JSON.stringify(jsResult, (key, value) => {
+            // Last chance to handle any remaining proxy objects
             if (value && typeof value === 'object' && value.constructor && value.constructor.name === 'PyProxy') {
               return value.toJs ? value.toJs() : String(value);
             }
+            // Ensure complex IFC objects are preserved
+            if (key === 'OwnerHistory' || key === 'ObjectPlacement' || key === 'Representation') {
+              console.log('[v0] Preserving complex object ' + key + ':', value);
+            }
             return value;
           }));
-          
-          jsResult = serializedResult;
+
+          console.log('[v0] Final result sample:', {
+            totalEntities: jsResult.totalEntities,
+            schema: jsResult.schema,
+            tables: jsResult.tables,
+            entitiesCount: jsResult.entities ? Object.keys(jsResult.entities).length : 0
+          });
         } catch (conversionError) {
           console.error('[v0] Error converting Python result:', conversionError);
           throw new Error(\`Failed to convert Python result to JavaScript: \${conversionError.message}\`);

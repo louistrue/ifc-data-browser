@@ -178,6 +178,13 @@ class Patcher(ifcpatch.BasePatcher):
             self.db = sqlite3.connect(database)
             self.c = self.db.cursor()
             self.file_patched = database
+
+            # SQLite performance optimizations for bulk inserts
+            self.c.execute("PRAGMA synchronous = OFF")  # Don't wait for disk sync
+            self.c.execute("PRAGMA journal_mode = MEMORY")  # Keep journal in memory
+            self.c.execute("PRAGMA cache_size = -64000")  # 64MB cache (negative = KB)
+            self.c.execute("PRAGMA temp_store = MEMORY")  # Temp tables in memory
+            self.c.execute("PRAGMA mmap_size = 268435456")  # 256MB memory map
         elif self.sql_type == "mysql":
             self.db = mysql.connector.connect(
                 host=self.host, user=self.username, password=self.password, database=database
@@ -205,7 +212,8 @@ class Patcher(ifcpatch.BasePatcher):
         else:
             ifc_classes = self.file.wrapped_data.types()
 
-        for ifc_class in ifc_classes:
+        total_classes = len(ifc_classes)
+        for i, ifc_class in enumerate(ifc_classes, 1):
             declaration = self.schema.declaration_by_name(ifc_class)
 
             if self.should_skip_geometry_data:
@@ -213,6 +221,10 @@ class Patcher(ifcpatch.BasePatcher):
                     declaration, "IfcRepresentationItem"
                 ):
                     continue
+
+            # Only log major progress milestones to reduce overhead
+            if i % 10 == 0 or i == total_classes or i == 1:
+                print(f"Processing {ifc_class} ({i}/{total_classes})")
 
             if self.sql_type == "sqlite":
                 self.create_sqlite_table(ifc_class, declaration)
@@ -520,6 +532,7 @@ class Patcher(ifcpatch.BasePatcher):
 
     def insert_data(self, ifc_class: str) -> None:
         elements = self.file.by_type(ifc_class, include_subtypes=False)
+        total_elements = len(elements)
 
         rows: list[list[Any]] = []
         id_map_rows: list[tuple[int, str]] = []
@@ -580,10 +593,64 @@ class Patcher(ifcpatch.BasePatcher):
 
         if self.sql_type == "sqlite":
             if rows:
-                self.c.executemany(f"INSERT INTO {ifc_class} VALUES ({','.join(['?']*len(rows[0]))});", rows)
-                self.c.executemany("INSERT INTO id_map VALUES (?, ?);", id_map_rows)
+                # Fast sanitization for SQLite compatibility
+                # Only process rows that might contain problematic types
+                sanitized_rows = []
+                for row in rows:
+                    sanitized_row = []
+                    for value in row:
+                        # Fast type checking and conversion
+                        if value is None:
+                            sanitized_row.append(None)
+                        elif type(value) in (int, float, str, bytes):
+                            sanitized_row.append(value)
+                        elif type(value) is bool:
+                            sanitized_row.append(int(value))
+                        elif type(value) is dict:
+                            sanitized_row.append(json.dumps(value))
+                        elif type(value) in (list, tuple):
+                            sanitized_row.append(json.dumps(value))
+                        else:
+                            # Convert any other type to string for SQLite compatibility
+                            sanitized_row.append(str(value))
+                    sanitized_rows.append(sanitized_row)
+
+                try:
+                    self.c.executemany(f"INSERT INTO {ifc_class} VALUES ({','.join(['?']*len(sanitized_rows[0]))});", sanitized_rows)
+                    self.c.executemany("INSERT INTO id_map VALUES (?, ?);", id_map_rows)
+                except Exception as e:
+                    print(f"Error inserting data for {ifc_class}: {e}")
+                    print(f"Problematic row data (first few values): {sanitized_rows[0][:5] if sanitized_rows else 'No rows'}")
+                    raise
+
             if pset_rows:
-                self.c.executemany("INSERT INTO psets VALUES (?, ?, ?, ?);", pset_rows)
+                # Fast sanitization for pset values
+                sanitized_pset_rows = []
+                for row in pset_rows:
+                    sanitized_row = []
+                    for value in row:
+                        # Fast type checking and conversion
+                        if value is None:
+                            sanitized_row.append(None)
+                        elif type(value) in (int, float, str, bytes):
+                            sanitized_row.append(value)
+                        elif type(value) is bool:
+                            sanitized_row.append(int(value))
+                        elif type(value) is dict:
+                            sanitized_row.append(json.dumps(value))
+                        elif type(value) in (list, tuple):
+                            sanitized_row.append(json.dumps(value))
+                        else:
+                            sanitized_row.append(str(value))
+                    sanitized_pset_rows.append(sanitized_row)
+
+                try:
+                    self.c.executemany("INSERT INTO psets VALUES (?, ?, ?, ?);", sanitized_pset_rows)
+                except Exception as e:
+                    print(f"Error inserting pset data: {e}")
+                    print(f"Problematic pset row data: {sanitized_pset_rows[0] if sanitized_pset_rows else 'No pset rows'}")
+                    raise
+
         elif self.sql_type == "mysql":
             if rows:
                 if json_attrs := self.my_sql_classes_json_attrs.get(ifc_class):

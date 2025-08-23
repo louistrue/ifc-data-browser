@@ -298,6 +298,11 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
     return data.tables.filter((table) => data.entities[table] && Array.isArray(data.entities[table]))
   }
 
+  // European-style number formatting with spaces as thousands separators
+  const formatNumber = (num: number): string => {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  }
+
   const getFilteredEntityTables = () => {
     const allTables = getEntityTables()
 
@@ -357,9 +362,9 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
   console.log("[v0] Quantities data:", specialTables.quantities.length)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 db-view">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between px-1">
         <div className="flex items-center space-x-4">
           <Button variant="outline" onClick={onBackToUpload}>
             <ArrowLeftIcon className="w-4 h-4 mr-2" />
@@ -371,27 +376,27 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <Badge variant="secondary" className="bg-primary/10 text-primary">
+          <Badge variant="secondary" className="db-chip bg-primary/10 text-primary h-6 px-2">
             {data.schema}
           </Badge>
-          <Badge variant="outline">{data.totalEntities} entities</Badge>
+          <Badge variant="outline" className="db-chip h-6 px-2">{data.totalEntities} entities</Badge>
           {psetStats.totalProperties > 0 && (
-            <Badge variant="outline" className="bg-green-50 text-green-700">
+            <Badge variant="outline" className="db-chip bg-green-50 text-green-700 h-6 px-2">
               {psetStats.totalProperties} properties
             </Badge>
           )}
           {specialTables.quantities.length > 0 && (
-            <Badge variant="outline" className="bg-orange-50 text-orange-700">
+            <Badge variant="outline" className="db-chip bg-orange-50 text-orange-700 h-6 px-2">
               {specialTables.quantities.length} quantities
             </Badge>
           )}
           {specialTables.materials.length > 0 && (
-            <Badge variant="outline" className="bg-blue-50 text-blue-700">
+            <Badge variant="outline" className="db-chip bg-blue-50 text-blue-700 h-6 px-2">
               {specialTables.materials.length} materials
             </Badge>
           )}
           {specialTables.classifications.length > 0 && (
-            <Badge variant="outline" className="bg-purple-50 text-purple-700">
+            <Badge variant="outline" className="db-chip bg-purple-50 text-purple-700 h-6 px-2">
               {specialTables.classifications.length} classifications
             </Badge>
           )}
@@ -411,55 +416,77 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="entities">Entities</TabsTrigger>
-          <TabsTrigger value="properties">Properties</TabsTrigger>
-          <TabsTrigger value="quantities">Quantities</TabsTrigger>
-          <TabsTrigger value="materials">Materials</TabsTrigger>
-          <TabsTrigger value="classifications">Classifications</TabsTrigger>
-          <TabsTrigger value="query">Query</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-7 db-tabs-list db-tabs-sticky">
+          <TabsTrigger className="db-tabs-trigger" value="overview">Overview</TabsTrigger>
+          <TabsTrigger className="db-tabs-trigger" value="entities">Entities</TabsTrigger>
+          <TabsTrigger className="db-tabs-trigger" value="properties">Properties</TabsTrigger>
+          <TabsTrigger className="db-tabs-trigger" value="quantities">Quantities</TabsTrigger>
+          <TabsTrigger className="db-tabs-trigger" value="materials">Materials</TabsTrigger>
+          <TabsTrigger className="db-tabs-trigger" value="classifications">Classifications</TabsTrigger>
+          <TabsTrigger className="db-tabs-trigger" value="query">Query</TabsTrigger>
         </TabsList>
 
         {/* Database Overview */}
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+            <Card className="!rounded-[4px]">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Entity Tables</CardTitle>
                 <TableIcon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-primary">{entityTables.length}</div>
+                <div className="db-metric-value">{formatNumber(entityTables.length)}</div>
                 <p className="text-xs text-muted-foreground">IFC entity types</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="!rounded-[4px]">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Entities</CardTitle>
                 <HashIcon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-primary">{data.totalEntities}</div>
+                <div className="db-metric-value">{formatNumber(data.totalEntities)}</div>
                 <p className="text-xs text-muted-foreground">Building elements</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="!rounded-[4px]">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Properties</CardTitle>
                 <InfoIcon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-primary">{psetStats.totalProperties}</div>
-                <p className="text-xs text-muted-foreground">{psetStats.uniquePsets} property sets</p>
+                <div className="db-metric-value">{formatNumber(psetStats.totalProperties)}</div>
+                <p className="text-xs text-muted-foreground">{formatNumber(psetStats.uniquePsets)} property sets</p>
+              </CardContent>
+            </Card>
+
+            <Card className="!rounded-[4px]">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Materials</CardTitle>
+                <DatabaseIcon className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="db-metric-value">{formatNumber(specialTables.materials.length)}</div>
+                <p className="text-xs text-muted-foreground">Material entries</p>
+              </CardContent>
+            </Card>
+
+            <Card className="!rounded-[4px]">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Quantities</CardTitle>
+                <InfoIcon className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="db-metric-value">{formatNumber(specialTables.quantities.length)}</div>
+                <p className="text-xs text-muted-foreground">Quantity entries</p>
               </CardContent>
             </Card>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
+            <Card className="!rounded-[4px]">
               <CardHeader>
                 <CardTitle>Database Structure</CardTitle>
               </CardHeader>
@@ -467,41 +494,41 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
                 <div>
                   <h4 className="font-medium mb-2">Core Tables</h4>
                   <div className="grid grid-cols-2 gap-2">
-                    <Badge variant="outline" className="justify-center">
-                      metadata ({specialTables.metadata.length})
+                    <Badge variant="outline" className="db-tag justify-center text-xs px-2 py-0.5">
+                      metadata ({formatNumber(specialTables.metadata.length)})
                     </Badge>
-                    <Badge variant="outline" className="justify-center">
-                      id_map ({data.entities.id_map ? data.entities.id_map.length : 0})
+                    <Badge variant="outline" className="db-tag justify-center text-xs px-2 py-0.5">
+                      id_map ({formatNumber(data.entities.id_map ? data.entities.id_map.length : 0)})
                     </Badge>
                   </div>
                 </div>
                 <div>
                   <h4 className="font-medium mb-2">Rich Data Tables</h4>
                   <div className="grid grid-cols-1 gap-2">
-                    <Badge variant="secondary" className="justify-center">
-                      properties ({specialTables.properties.length})
+                    <Badge variant="secondary" className="db-chip justify-center text-xs px-2 py-0.5">
+                      properties ({formatNumber(specialTables.properties.length)})
                     </Badge>
-                    <Badge variant="secondary" className="justify-center">
-                      materials ({specialTables.materials.length})
+                    <Badge variant="secondary" className="db-chip justify-center text-xs px-2 py-0.5">
+                      materials ({formatNumber(specialTables.materials.length)})
                     </Badge>
-                    <Badge variant="secondary" className="justify-center">
-                      classifications ({specialTables.classifications.length})
+                    <Badge variant="secondary" className="db-chip justify-center text-xs px-2 py-0.5">
+                      classifications ({formatNumber(specialTables.classifications.length)})
                     </Badge>
-                    <Badge variant="secondary" className="justify-center">
-                      quantities ({specialTables.quantities.length})
+                    <Badge variant="secondary" className="db-chip justify-center text-xs px-2 py-0.5">
+                      quantities ({formatNumber(specialTables.quantities.length)})
                     </Badge>
                   </div>
                 </div>
                 <div>
                   <h4 className="font-medium mb-2">Entity Tables</h4>
                   <p className="text-sm text-muted-foreground">
-                    {entityTables.length} IFC entity types with full attribute data including structural properties
+                    {formatNumber(entityTables.length)} IFC entity types with full attribute data including structural properties
                   </p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="!rounded-[4px]">
               <CardHeader>
                 <CardTitle>Data Insights</CardTitle>
               </CardHeader>
@@ -511,7 +538,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
                     <h4 className="font-medium mb-2">Property Sets</h4>
                     <div className="flex flex-wrap gap-1 mb-2">
                       {psetStats.psetNames.map((pset) => (
-                        <Badge key={pset} variant="outline" className="text-xs">
+                        <Badge key={pset} variant="outline" className="db-tag text-xs px-2 py-0.5">
                           {pset}
                         </Badge>
                       ))}
@@ -525,7 +552,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
                   <div>
                     <h4 className="font-medium mb-2">Materials</h4>
                     <p className="text-sm text-muted-foreground">
-                      {specialTables.materials.length} unique materials extracted from property sets and references
+                      {formatNumber(specialTables.materials.length)} unique materials extracted from property sets and references
                     </p>
                   </div>
                 )}
@@ -533,7 +560,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
                   <div>
                     <h4 className="font-medium mb-2">Classifications</h4>
                     <p className="text-sm text-muted-foreground">
-                      {specialTables.classifications.length} classified elements with IfcClassificationReference
+                      {formatNumber(specialTables.classifications.length)} classified elements with IfcClassificationReference
                     </p>
                   </div>
                 )}
@@ -541,7 +568,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
                   <div>
                     <h4 className="font-medium mb-2">Quantities</h4>
                     <p className="text-sm text-muted-foreground">
-                      {specialTables.quantities.length} element quantities and base quantities extracted from IFC
+                      {formatNumber(specialTables.quantities.length)} element quantities and base quantities extracted from IFC
                       elements
                     </p>
                   </div>
@@ -563,7 +590,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
                   </div>
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-muted-foreground">
-                      {showAllEntities ? `All ${entityTables.length}` : `Built Elements ${filteredEntityTables.length}`}
+                      {showAllEntities ? `All ${formatNumber(entityTables.length)}` : `Built Elements ${formatNumber(filteredEntityTables.length)}`}
                     </span>
                     <Button variant="outline" size="sm" onClick={() => setShowAllEntities(!showAllEntities)}>
                       {showAllEntities ? "Show Built Elements Only" : "Show All Entities"}
@@ -593,7 +620,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
                             <div>
                               <h3 className="font-medium text-foreground">{tableName}</h3>
                               <p className="text-sm text-muted-foreground">
-                                {tableData.length} {tableData.length === 1 ? "record" : "records"}
+                                {formatNumber(tableData.length)} {tableData.length === 1 ? "record" : "records"}
                               </p>
                             </div>
                             <ChevronRightIcon className="w-4 h-4 text-muted-foreground" />

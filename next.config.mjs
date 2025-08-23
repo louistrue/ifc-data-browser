@@ -14,7 +14,7 @@ const nextConfig = {
     if (dev && !isServer) {
       // Enable hot module replacement
       config.resolve.symlinks = false;
-      
+
       // Configure webpack dev server for better file watching
       config.watchOptions = {
         poll: 1000,
