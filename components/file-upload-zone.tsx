@@ -52,13 +52,13 @@ export function FileUploadZone({ onFileUpload, disabled = false }: FileUploadZon
   })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <Card className="w-full">
-        <CardContent className="p-8">
+        <CardContent className="p-6 sm:p-8">
           <div
             {...getRootProps()}
             className={cn(
-              "border-2 border-dashed rounded-lg p-12 text-center transition-all duration-200",
+              "border-2 border-dashed rounded-lg p-8 sm:p-12 text-center transition-all duration-200",
               disabled
                 ? "cursor-not-allowed opacity-50 border-muted-foreground/30"
                 : "cursor-pointer hover:border-primary/50 hover:bg-muted/50 hover:scale-[1.02]",
@@ -69,7 +69,7 @@ export function FileUploadZone({ onFileUpload, disabled = false }: FileUploadZon
           >
             <input {...getInputProps()} />
 
-            <div className="flex flex-col items-center space-y-4">
+            <div className="flex flex-col items-center space-y-3 sm:space-y-4">
               <div
                 className={cn(
                   "w-16 h-16 rounded-full flex items-center justify-center transition-colors",
@@ -81,10 +81,10 @@ export function FileUploadZone({ onFileUpload, disabled = false }: FileUploadZon
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5 sm:space-y-2">
                 <h3
                   className={cn(
-                    "font-inter text-xl font-semibold",
+                    "font-inter text-lg sm:text-xl font-semibold",
                     disabled ? "text-muted-foreground" : "text-foreground",
                   )}
                 >
@@ -99,10 +99,10 @@ export function FileUploadZone({ onFileUpload, disabled = false }: FileUploadZon
                     ? "Please wait while we load the processing engine"
                     : "Drag and drop your IFC file here, or click to browse"}
                 </p>
-                <p className="text-sm text-muted-foreground">Supports .ifc files up to 100MB</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Supports .ifc files up to 100MB</p>
               </div>
 
-              <Button variant="outline" className="mt-4 bg-transparent" disabled={disabled}>
+              <Button variant="outline" className="mt-3 sm:mt-4 bg-transparent" disabled={disabled}>
                 <FileIcon className="w-4 h-4 mr-2" />
                 Choose File
               </Button>
@@ -110,7 +110,7 @@ export function FileUploadZone({ onFileUpload, disabled = false }: FileUploadZon
           </div>
 
           {error && (
-            <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center space-x-2">
+            <div className="mt-3 sm:mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center space-x-2">
               <AlertCircleIcon className="w-4 h-4 text-destructive flex-shrink-0" />
               <span className="text-sm text-destructive">{error}</span>
             </div>

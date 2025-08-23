@@ -54,7 +54,7 @@ export function Header({ showOsToggle = true, usePyodide, fileName, hasProcessed
 
   return (
     <header className="retro-menu-bar">
-      <div className="h-8 flex items-center justify-between px-4">
+      <div className="h-10 sm:h-8 flex items-center justify-between px-3 sm:px-4">
         <div className="flex items-center">
           <div className="flex items-center gap-2 select-none">
             <div className="w-6 h-6 rounded-[6px] border border-primary/40 bg-transparent flex items-center justify-center shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]">
