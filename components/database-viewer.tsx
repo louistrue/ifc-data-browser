@@ -22,9 +22,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
   const [activeTab, setActiveTab] = useState("overview")
   const [showAllEntities, setShowAllEntities] = useState(false)
 
-  console.log("[v0] DatabaseViewer received data:", data)
-  console.log("[v0] Data tables:", data.tables)
-  console.log("[v0] Data entities keys:", Object.keys(data.entities))
+  // Data received silently
 
   const handleTableSelect = (tableName: string) => {
     setSelectedTable(tableName)
@@ -357,9 +355,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
   const filteredEntityTables = getFilteredEntityTables()
   const psetStats = getPsetStats()
 
-  console.log("[v0] Entity tables:", entityTables)
-  console.log("[v0] Property stats:", psetStats)
-  console.log("[v0] Quantities data:", specialTables.quantities.length)
+  // Stats calculated silently
 
   return (
     <div className="space-y-6 db-view">

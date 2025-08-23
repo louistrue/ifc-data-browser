@@ -51,14 +51,14 @@ else:
     try:
         import sqlite3
     except:
-        print("No SQLite support")
+        # SQLite support not available
         SQLTypes = typing.Literal["MySQL"]
 
     try:
         import mysql.connector
         import mysql.connector.abstracts
     except:
-        print("No MySQL support")
+        # MySQL support not available
         SQLTypes = typing.Literal["SQLite"]
 
 DEFAULT_DATABASE_NAME = "database"
@@ -224,7 +224,7 @@ class Patcher(ifcpatch.BasePatcher):
 
             # Only log major progress milestones to reduce overhead
             if i % 10 == 0 or i == total_classes or i == 1:
-                print(f"Processing {ifc_class} ({i}/{total_classes})")
+                pass  # Processing class silently
 
             if self.sql_type == "sqlite":
                 self.create_sqlite_table(ifc_class, declaration)
@@ -289,7 +289,7 @@ class Patcher(ifcpatch.BasePatcher):
         if not valid_file:
             # If there were no elements, iterator will also fail and it's okay not to report it.
             if products:
-                print("WARNING. Geometry iterator failed to initialize.")
+                pass  # Geometry iterator failed to initialize
             return
         checkpoint = time.time()
         progress = 0
@@ -300,11 +300,7 @@ class Patcher(ifcpatch.BasePatcher):
                 percent_created = round(progress / total * 100)
                 percent_preprocessed = iterator.progress()
                 percent_average = (percent_created + percent_preprocessed) / 2
-                print(
-                    "{} / {} ({}% created, {}% preprocessed) elements processed in {:.2f}s ...".format(
-                        progress, total, percent_created, percent_preprocessed, time.time() - checkpoint
-                    )
-                )
+                pass  # Geometry processing progress silently tracked
                 checkpoint = time.time()
             shape = iterator.get()
             if shape:
@@ -346,10 +342,7 @@ class Patcher(ifcpatch.BasePatcher):
 
         if row is not None:
             # TODO: convert to error as it's unsafe?
-            print(
-                f"WARNING. {self.sql_type} database ('{self.database}') was already used for ifc2sql patch before ('id_map' table found). "
-                "Which could lead to mixed up ids and other unexpected results."
-            )
+            pass  # Database already used for ifc2sql patch before
 
     def create_id_map(self) -> None:
         if self.sql_type == "sqlite":
@@ -465,7 +458,7 @@ class Patcher(ifcpatch.BasePatcher):
             elif primitive == "binary":
                 data_type = "TEXT"
             else:
-                print("Possibly not implemented attribute data type:", attribute, primitive)
+                pass  # Possibly not implemented attribute data type
             if not self.is_strict or derived[i]:
                 optional = ""
             else:
@@ -508,7 +501,7 @@ class Patcher(ifcpatch.BasePatcher):
                 data_type = "JSON"
                 json_attrs.append(i)
             else:
-                print("Possibly not implemented attribute data type:", attribute, primitive)
+                pass  # Possibly not implemented attribute data type
             if not self.is_strict or derived[i]:
                 optional = "DEFAULT NULL"
             else:
@@ -619,8 +612,7 @@ class Patcher(ifcpatch.BasePatcher):
                     self.c.executemany(f"INSERT INTO {ifc_class} VALUES ({','.join(['?']*len(sanitized_rows[0]))});", sanitized_rows)
                     self.c.executemany("INSERT INTO id_map VALUES (?, ?);", id_map_rows)
                 except Exception as e:
-                    print(f"Error inserting data for {ifc_class}: {e}")
-                    print(f"Problematic row data (first few values): {sanitized_rows[0][:5] if sanitized_rows else 'No rows'}")
+                    # Error inserting data (silenced to reduce spam)
                     raise
 
             if pset_rows:
@@ -647,8 +639,7 @@ class Patcher(ifcpatch.BasePatcher):
                 try:
                     self.c.executemany("INSERT INTO psets VALUES (?, ?, ?, ?);", sanitized_pset_rows)
                 except Exception as e:
-                    print(f"Error inserting pset data: {e}")
-                    print(f"Problematic pset row data: {sanitized_pset_rows[0] if sanitized_pset_rows else 'No pset rows'}")
+                    # Error inserting pset data (silenced to reduce spam)
                     raise
 
         elif self.sql_type == "mysql":

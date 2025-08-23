@@ -39,8 +39,6 @@ export function DataTable({ tableName, data, onBack, customTitle, description }:
     if (data.length === 0) return []
 
     const allKeys = Object.keys(data[0])
-    console.log(`DataTable: ${tableName} has ${data.length} rows`)
-    console.log(`DataTable: All keys:`, allKeys)
 
     // Filter out columns that are completely empty
     const filteredColumns = allKeys.filter((column) => {
@@ -55,7 +53,6 @@ export function DataTable({ tableName, data, onBack, customTitle, description }:
         'LongName', 'LongDescription', 'UserDefinedPurpose', 'ApplicableOccurrence'
       ]
       if (alwaysHideColumns.includes(column)) {
-        console.log(`DataTable: Hiding always-empty column: ${column}`)
         return false
       }
 
@@ -68,15 +65,8 @@ export function DataTable({ tableName, data, onBack, customTitle, description }:
         return true
       })
 
-      if (!hasNonEmptyValues) {
-        console.log(`DataTable: Hiding empty column: ${column}`)
-      }
-
       return hasNonEmptyValues
     })
-
-    console.log(`DataTable: Showing ${filteredColumns.length} of ${allKeys.length} columns`)
-    console.log(`DataTable: Hidden columns:`, allKeys.filter(col => !filteredColumns.includes(col)))
 
     return filteredColumns
   }, [data, tableName])
@@ -203,7 +193,6 @@ export function DataTable({ tableName, data, onBack, customTitle, description }:
       }
 
       // Fallback for empty objects
-      console.log(`Empty Object detected for column ${column}:`, value, typeof value, Object.keys(value || {}))
       return (
         <Badge variant="secondary" className="text-xs">
           Empty Object

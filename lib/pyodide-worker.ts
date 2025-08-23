@@ -22,7 +22,7 @@ export interface ProcessingResult {
 export const createPyodideWorker = async () => {
   const response = await fetch("/ifc2sql.py")
   if (!response.ok) {
-    throw new Error(`Failed to fetch ifc2sql.py: ${response.status} ${response.statusText}`)
+    throw new Error('Failed to fetch ifc2sql.py: ' + response.status + ' ' + response.statusText)
   }
   const ifc2sqlCode = await response.text()
 
@@ -59,7 +59,7 @@ export const createPyodideWorker = async () => {
 
     async function initializePyodide() {
       try {
-        console.log('[v0] Starting Pyodide initialization');
+        // Starting Pyodide initialization silently
         self.postMessage({ type: 'progress', progress: 5, step: 'Loading Pyodide...' });
         
         importScripts('https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js');
@@ -67,23 +67,20 @@ export const createPyodideWorker = async () => {
           indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.23.4/full/'
         });
         
-        console.log('[v0] Pyodide loaded successfully');
+        // Pyodide loaded successfully
         self.postMessage({ type: 'progress', progress: 20, step: 'Installing base packages...' });
         
         await pyodide.loadPackage(['micropip', 'numpy']);
-        console.log('[v0] Base packages loaded');
+        // Base packages loaded silently
         
         self.postMessage({ type: 'progress', progress: 30, step: 'Installing shapely...' });
         await pyodide.loadPackage(['shapely']);
-        console.log('[v0] Shapely package loaded');
-        
+
         self.postMessage({ type: 'progress', progress: 35, step: 'Installing typing-extensions...' });
         await pyodide.loadPackage(['typing-extensions']);
-        console.log('[v0] typing-extensions package loaded');
-        
+
         self.postMessage({ type: 'progress', progress: 37, step: 'Installing sqlite3...' });
         await pyodide.loadPackage(['sqlite3']);
-        console.log('[v0] sqlite3 package loaded');
         
         self.postMessage({ type: 'progress', progress: 40, step: 'Installing IfcOpenShell...' });
         
@@ -123,10 +120,10 @@ except Exception as e:
     print("Continuing without ifcpatch - using direct ifcopenshell.sql instead")
         \`);
         
-        console.log('[v0] IfcOpenShell installed successfully');
+        // IfcOpenShell installed successfully
         self.postMessage({ type: 'progress', progress: 60, step: 'Loading ifc2sql.py module...' });
         
-        console.log('[v0] Loading ifc2sql.py module...');
+        // Loading ifc2sql.py module silently
         
         await pyodide.runPythonAsync(\`
 import ifcopenshell
@@ -233,9 +230,6 @@ def process_ifc_to_sqlite(file_content, filename):
                                 # Use recursive=True and scalar_only=False to resolve "Empty Object" references
                                 entity_info = element.get_info(recursive=True, scalar_only=False)
 
-                                print(f"DEBUG: get_info() returned {len(entity_info)} attributes for {element.is_a()} #{element.id()}")
-                                print(f"DEBUG: Attribute names: {list(entity_info.keys())}")
-
                                 # Ensure essential fields are present (get_info() might miss some)
                                 entity_info.update({
                                     'id': element.id(),
@@ -255,13 +249,11 @@ def process_ifc_to_sqlite(file_content, filename):
                                             attr_value = getattr(element, attr_name)
                                             if attr_value is not None:
                                                 entity_info[attr_name] = attr_value
-                                                print(f"Added missing common attribute {attr_name}: {attr_value}")
-                                        except Exception as attr_get_error:
-                                            print(f"Failed to get {attr_name}: {attr_get_error}")
+                                        except:
+                                            pass
 
                             except Exception as get_info_error:
-                                print(f"get_info() failed for {element.is_a()} #{element.id()}: {get_info_error}")
-                                # Fallback: Create basic info structure
+                                # get_info() failed, use fallback approach
                                 entity_info = {
                                     'id': element.id(),
                                     'Type': element.is_a(),
@@ -277,15 +269,12 @@ def process_ifc_to_sqlite(file_content, filename):
                                             attr_value = getattr(element, attr_name)
                                             if attr_value is not None:
                                                 entity_info[attr_name] = attr_value
-                                                print(f"Added fallback common attribute {attr_name}: {attr_value}")
-                                        except Exception as attr_get_error:
-                                            print(f"Failed to get fallback {attr_name}: {attr_get_error}")
+                                        except:
+                                            pass
 
                             # Now enhance with direct attribute access for any missing data
                             try:
                                 attr_count = element.attribute_count()
-                                print(f"Processing {attr_count} attributes for {element.is_a()} #{element.id()}")
-                                print(f"Current entity_info keys: {list(entity_info.keys())}")
 
                                 # Get all attribute names to ensure we don't miss any
                                 all_attr_names = set()
@@ -345,16 +334,16 @@ def process_ifc_to_sqlite(file_content, filename):
                                                                     coords = location.Coordinates
                                                                     if hasattr(coords, '__len__') and len(coords) >= 3:
                                                                         entity_ref['coordinates'] = [float(coords[0]), float(coords[1]), float(coords[2])]
-                                                    except Exception as coord_error:
-                                                        print(f"Coordinate extraction failed: {coord_error}")
+                                                    except:
+                                                        pass
 
                                                 elif attr_name == 'Representation':
                                                     try:
                                                         if hasattr(raw_value, 'Representations'):
                                                             reps = raw_value.Representations
                                                             entity_ref['representation_count'] = len(reps) if hasattr(reps, '__len__') else 0
-                                                    except Exception as rep_error:
-                                                        print(f"Representation extraction failed: {rep_error}")
+                                                    except:
+                                                        pass
 
                                                 elif attr_name == 'OwnerHistory':
                                                     try:
@@ -364,18 +353,17 @@ def process_ifc_to_sqlite(file_content, filename):
                                                                 person = user.ThePerson
                                                                 if hasattr(person, 'GivenName'):
                                                                     entity_ref['user'] = f"{getattr(person, 'GivenName', '')} {getattr(person, 'FamilyName', '')}".strip()
-                                                    except Exception as owner_error:
-                                                        print(f"OwnerHistory extraction failed: {owner_error}")
+                                                    except:
+                                                        pass
 
                                                 entity_info[attr_name] = entity_ref
 
-                                    except Exception as attr_loop_error:
-                                        print(f"Attribute loop error at index {i}: {attr_loop_error}")
+                                    except:
                                         continue
 
                             except Exception as extraction_error:
-                                print(f"Enhanced extraction failed for {element.is_a()} #{element.id()}: {extraction_error}")
                                 # Keep the entity_info we got from get_info(), don't lose data
+                                pass
 
                             # Add specific quantity values for better display
                             if element.is_a().startswith('IfcQuantity'):
@@ -414,8 +402,7 @@ def process_ifc_to_sqlite(file_content, filename):
                                     entity_info['RelatingMaterial'] = element.RelatingMaterial
                                 entity_info['RelationshipType'] = element.is_a()
 
-                            # Debug: Print all attributes we got
-                            print(f"Entity {element.is_a()} #{element.id()} has {len(entity_info)} attributes: {list(entity_info.keys())}")
+                            # Processing complete for this entity
 
                             entities[ifc_type].append(entity_info)
                             total_entities += 1
@@ -564,7 +551,7 @@ def process_ifc_to_sqlite(file_content, filename):
 print("IFC processing environment initialized with official ifc2sql.py")
         \`);
         
-        console.log('[v0] Official ifc2sql.py environment initialized successfully');
+        // Official ifc2sql.py environment initialized successfully
         self.postMessage({ type: 'progress', progress: 100, step: 'Ready for processing' });
         self.postMessage({ type: 'init', data: { ready: true } });
         
@@ -573,7 +560,7 @@ print("IFC processing environment initialized with official ifc2sql.py")
         self.postMessage({
           type: 'error',
           data: { 
-            message: \`Failed to initialize IfcOpenShell: \${error.message}\`,
+            message: 'Failed to initialize IfcOpenShell: ' + error.message,
             stack: error.stack 
           }
         });
@@ -582,7 +569,7 @@ print("IFC processing environment initialized with official ifc2sql.py")
 
     async function processIfcFile(fileBuffer, fileName) {
       try {
-        console.log(\`[v0] Processing file: \${fileName}, size: \${fileBuffer.byteLength} bytes\`);
+        // Processing file: ' + fileName + ' silently
         self.postMessage({ type: 'progress', progress: 60, step: 'Processing with official ifc2sql.py' });
         
         // Convert ArrayBuffer to bytes for Python
@@ -617,10 +604,10 @@ print(f"[DEBUG] SQLite database path set to: {sqlite_db_path}")
           // Convert to JS with proper dict converter
           jsResult = result.toJs ? result.toJs({ dict_converter: Object.fromEntries }) : result;
 
-          // Debug: Check what we have before serialization
-          console.log('[v0] Raw JS result type:', typeof jsResult);
-          console.log('[v0] Raw JS result keys:', Object.keys(jsResult));
-          console.log('[v0] Sample entity data:', jsResult.entities ? Object.keys(jsResult.entities)[0] : 'No entities');
+          // Debug: Basic info about the result
+          if (!jsResult.entities || Object.keys(jsResult.entities).length === 0) {
+            console.warn('[v0] Warning: No entities found in processing result');
+          }
 
           // Convert PyProxy objects to plain JavaScript objects for worker communication
           const convertPyProxyToJS = (obj, depth = 0) => {
@@ -638,7 +625,6 @@ print(f"[DEBUG] SQLite database path set to: {sqlite_db_path}")
             if (obj.constructor && obj.constructor.name === 'PyProxy') {
               try {
                 const converted = obj.toJs ? obj.toJs({ dict_converter: Object.fromEntries }) : String(obj);
-                console.log('[v0] Converted PyProxy:', typeof converted, converted);
                 return convertPyProxyToJS(converted, depth + 1);
               } catch (e) {
                 console.error('[v0] Error converting PyProxy:', e);
@@ -655,33 +641,13 @@ print(f"[DEBUG] SQLite database path set to: {sqlite_db_path}")
             const result = {};
             for (const [key, value] of Object.entries(obj)) {
               // Special handling for complex IFC objects
-              if (key === 'OwnerHistory' || key === 'ObjectPlacement' || key === 'Representation') {
-                console.log('[v0] Processing complex object ' + key + ':', value, typeof value);
-              }
+              // (logging removed to reduce console spam)
               result[key] = convertPyProxyToJS(value, depth + 1);
             }
             return result;
           };
 
-          console.log('[v0] Before conversion, sample entities:', jsResult.entities ? Object.keys(jsResult.entities)[0] : 'No entities');
-          if (jsResult.entities && jsResult.entities[Object.keys(jsResult.entities)[0]]) {
-            const firstEntity = jsResult.entities[Object.keys(jsResult.entities)[0]][0];
-            console.log('[v0] First entity before conversion:', firstEntity);
-            console.log('[v0] OwnerHistory before:', firstEntity.OwnerHistory);
-            console.log('[v0] ObjectPlacement before:', firstEntity.ObjectPlacement);
-            console.log('[v0] Representation before:', firstEntity.Representation);
-          }
-
           jsResult = convertPyProxyToJS(jsResult);
-
-          console.log('[v0] After conversion, sample entities:', jsResult.entities ? Object.keys(jsResult.entities)[0] : 'No entities');
-          if (jsResult.entities && jsResult.entities[Object.keys(jsResult.entities)[0]]) {
-            const firstEntity = jsResult.entities[Object.keys(jsResult.entities)[0]][0];
-            console.log('[v0] First entity after conversion:', firstEntity);
-            console.log('[v0] OwnerHistory after:', firstEntity.OwnerHistory);
-            console.log('[v0] ObjectPlacement after:', firstEntity.ObjectPlacement);
-            console.log('[v0] Representation after:', firstEntity.Representation);
-          }
 
           // Final JSON serialization with special handling for complex objects
           jsResult = JSON.parse(JSON.stringify(jsResult, (key, value) => {
@@ -690,28 +656,21 @@ print(f"[DEBUG] SQLite database path set to: {sqlite_db_path}")
               return value.toJs ? value.toJs() : String(value);
             }
             // Ensure complex IFC objects are preserved
-            if (key === 'OwnerHistory' || key === 'ObjectPlacement' || key === 'Representation') {
-              console.log('[v0] Preserving complex object ' + key + ':', value);
-            }
+            // (complex object preservation handled silently)
             return value;
           }));
 
-          console.log('[v0] Final result sample:', {
-            totalEntities: jsResult.totalEntities,
-            schema: jsResult.schema,
-            tables: jsResult.tables,
-            entitiesCount: jsResult.entities ? Object.keys(jsResult.entities).length : 0
-          });
+          // Processing completed silently
         } catch (conversionError) {
           console.error('[v0] Error converting Python result:', conversionError);
-          throw new Error(\`Failed to convert Python result to JavaScript: \${conversionError.message}\`);
+          throw new Error('Failed to convert Python result to JavaScript: ' + conversionError.message);
         }
         
         if (jsResult && jsResult.error) {
-          throw new Error(\`Python processing error: \${jsResult.message}\`);
+          throw new Error('Python processing error: ' + jsResult.message);
         }
         
-        console.log('[v0] IFC processing completed successfully using official ifc2sql.py');
+        // IFC processing completed successfully using official ifc2sql.py
         self.postMessage({ type: 'progress', progress: 100, step: 'Processing Complete' });
         self.postMessage({ type: 'complete', data: jsResult });
         
@@ -720,7 +679,7 @@ print(f"[DEBUG] SQLite database path set to: {sqlite_db_path}")
         self.postMessage({
           type: 'error',
           data: { 
-            message: \`Failed to process IFC file: \${error.message}\`,
+            message: 'Failed to process IFC file: ' + error.message,
             stack: error.stack 
           }
         });
@@ -729,7 +688,7 @@ print(f"[DEBUG] SQLite database path set to: {sqlite_db_path}")
 
     async function executeQuery(query) {
       try {
-        console.log(\`[v0] Executing SQL query: \${query}\`);
+        // Executing SQL query silently
         
         if (!pyodide) {
           throw new Error('Pyodide not initialized');
@@ -816,14 +775,14 @@ except Exception as e:
           jsResults = serializedResults;
         } catch (conversionError) {
           console.error('[v0] Error converting query results:', conversionError);
-          throw new Error(\`Failed to convert query results to JavaScript: \${conversionError.message}\`);
+          throw new Error('Failed to convert query results to JavaScript: ' + conversionError.message);
         }
         
         if (jsResults && jsResults.error) {
-          throw new Error(\`SQL execution error: \${jsResults.error}\`);
+          throw new Error('SQL execution error: ' + jsResults.error);
         }
         
-        console.log(\`[v0] Query executed successfully, returning \${Array.isArray(jsResults) ? jsResults.length : 0} rows\`);
+        // Query executed successfully
         self.postMessage({ type: 'query_result', data: jsResults });
         
       } catch (error) {
@@ -831,7 +790,7 @@ except Exception as e:
         self.postMessage({
           type: 'error',
           data: { 
-            message: \`Failed to execute query: \${error.message}\`,
+            message: 'Failed to execute query: ' + error.message,
             stack: error.stack 
           }
         });

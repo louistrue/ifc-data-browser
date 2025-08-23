@@ -30,9 +30,9 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${sourceSans.variable} antialiased`}>
+    <html lang="en" className={`${inter.variable} ${sourceSans.variable} antialiased`} suppressHydrationWarning>
       <body className="font-inter">
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+        <ThemeProvider>
           {children}
         </ThemeProvider>
       </body>

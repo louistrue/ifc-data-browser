@@ -3,12 +3,10 @@
 import React from "react"
 import { Button } from "@/components/ui/button"
 import { MoonIcon, SunIcon, MonitorCog, MonitorSmartphone } from "lucide-react"
-import { useTheme } from "next-themes"
+import { useTheme } from "@/components/theme-provider"
 
 export function Header({ showOsToggle = true }: { showOsToggle?: boolean }) {
   const { theme, setTheme } = useTheme()
-  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent)
-  const [uiTheme, setUiTheme] = React.useState<'mac' | 'xp'>(isMac ? 'xp' : 'mac')
   const [mounted, setMounted] = React.useState(false)
 
   // Prevent hydration mismatch by only rendering after component mounts
@@ -16,7 +14,11 @@ export function Header({ showOsToggle = true }: { showOsToggle?: boolean }) {
     setMounted(true)
   }, [])
 
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent)
+  const [uiTheme, setUiTheme] = React.useState<'mac' | 'xp'>(isMac ? 'xp' : 'mac')
+
   React.useEffect(() => {
+    if (typeof document === 'undefined') return
     const root = document.documentElement
     if (uiTheme === 'xp') {
       root.classList.add('theme-xp')
