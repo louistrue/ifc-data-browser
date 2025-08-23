@@ -203,7 +203,7 @@ export function DataManagement({ data, fileName }: DataManagementProps) {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="current" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="w-full sm:grid sm:grid-cols-3">
           <TabsTrigger value="current">Current Project</TabsTrigger>
           <TabsTrigger value="saved">Saved Projects</TabsTrigger>
           <TabsTrigger value="history">Query History</TabsTrigger>

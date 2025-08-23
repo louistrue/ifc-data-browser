@@ -514,4 +514,26 @@
     background: #45c742;
     border-color: #2d9f2a;
   }
+
+  [data-slot="tabs-list"] {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  [data-slot="tabs-list"]::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (max-width: 640px) {
+    .retro-window {
+      border-radius: 0;
+      width: 100%;
+      margin: 0;
+    }
+
+    .retro-menu-bar {
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+  }
 }

@@ -415,7 +415,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7 db-tabs-list db-tabs-sticky">
+        <TabsList className="w-full db-tabs-list db-tabs-sticky sm:grid sm:grid-cols-7">
           <TabsTrigger className="db-tabs-trigger" value="overview">Overview</TabsTrigger>
           <TabsTrigger className="db-tabs-trigger" value="entities">Entities</TabsTrigger>
           <TabsTrigger className="db-tabs-trigger" value="properties">Properties</TabsTrigger>
