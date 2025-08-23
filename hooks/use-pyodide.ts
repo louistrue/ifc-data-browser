@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import { createPyodideWorker, type PyodideMessage, type ProcessingResult } from "@/lib/pyodide-worker"
 
 export interface ProcessingStatus {
@@ -22,11 +22,15 @@ export function usePyodide() {
   const workerRef = useRef<Worker | null>(null)
   const resolveRef = useRef<((result: ProcessingResult) => void) | null>(null)
   const rejectRef = useRef<((error: Error) => void) | null>(null)
+  const initializationPromiseRef = useRef<Promise<void> | null>(null)
 
   const initializePyodide = useCallback(async () => {
-    if (isInitialized || workerRef.current) return
+    if (isInitialized) return Promise.resolve()
+    if (initializationPromiseRef.current) return initializationPromiseRef.current
+    if (workerRef.current) return Promise.resolve()
 
-    return new Promise<void>((resolve, reject) => {
+    const initPromise = new Promise<void>((resolve, reject) => {
+      console.log("[v0] Creating new Pyodide worker")
       const worker = createPyodideWorker()
       workerRef.current = worker
 
@@ -43,34 +47,43 @@ export function usePyodide() {
             break
 
           case "init":
+            console.log("[v0] Pyodide initialization complete")
             setIsInitialized(true)
             setStatus((prev) => ({ ...prev, isProcessing: false }))
+            initializationPromiseRef.current = null
             resolve()
             break
 
           case "error":
+            console.error("[v0] Pyodide initialization error:", data?.message)
             setStatus((prev) => ({
               ...prev,
               isProcessing: false,
               error: data?.message || "Unknown error occurred",
             }))
+            initializationPromiseRef.current = null
             reject(new Error(data?.message || "Initialization failed"))
             break
         }
       }
 
       worker.onerror = (error) => {
+        console.error("[v0] Worker error:", error)
         setStatus((prev) => ({
           ...prev,
           isProcessing: false,
           error: "Worker initialization failed",
         }))
+        initializationPromiseRef.current = null
         reject(new Error("Worker initialization failed"))
       }
 
       setStatus((prev) => ({ ...prev, isProcessing: true, progress: 0, currentStep: "Starting..." }))
       worker.postMessage({ type: "init" })
     })
+
+    initializationPromiseRef.current = initPromise
+    return initPromise
   }, [isInitialized])
 
   const processIfcFile = useCallback(
@@ -119,7 +132,6 @@ export function usePyodide() {
           }
         }
 
-        // Convert file to ArrayBuffer
         const reader = new FileReader()
         reader.onload = () => {
           setStatus((prev) => ({
@@ -155,10 +167,12 @@ export function usePyodide() {
   )
 
   const cleanup = useCallback(() => {
+    console.log("[v0] Cleaning up Pyodide worker")
     if (workerRef.current) {
       workerRef.current.terminate()
       workerRef.current = null
     }
+    initializationPromiseRef.current = null
     setIsInitialized(false)
     setStatus({
       isProcessing: false,
@@ -166,6 +180,15 @@ export function usePyodide() {
       currentStep: "",
       error: null,
     })
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (workerRef.current) {
+        console.log("[v0] Component unmounting, terminating worker")
+        workerRef.current.terminate()
+      }
+    }
   }, [])
 
   return {

@@ -17,12 +17,14 @@ export default function IFCDataBrowser() {
 
   // Initialize Pyodide on component mount
   useEffect(() => {
+    console.log("[v0] Component mounted, initializing Pyodide")
     initializePyodide().catch(console.error)
 
     return () => {
+      console.log("[v0] Component unmounting, cleaning up")
       cleanup()
     }
-  }, [initializePyodide, cleanup])
+  }, []) // Removed dependencies to prevent re-initialization
 
   const handleFileUpload = async (file: File) => {
     if (!isInitialized) {

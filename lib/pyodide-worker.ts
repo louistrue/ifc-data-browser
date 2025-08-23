@@ -63,16 +63,34 @@ export const createPyodideWorker = () => {
         
         await pyodide.runPythonAsync(\`
 import micropip
+
+# Applying compatibility bypass patch...
+print("Applying compatibility bypass patch...")
+
+# Import the WheelInfo class and patch it before any wheel operations
 from micropip._micropip import WheelInfo
 
-# Monkey-patch wheel compatibility check as per working config
-WheelInfo.check_compatible = lambda self: None
+# Store original method for debugging
+original_check_compatible = WheelInfo.check_compatible
+
+# Override the check_compatible method to always pass
+def bypass_compatibility_check(self):
+    print(f"Bypassing compatibility check for wheel: {getattr(self, 'name', 'unknown')}")
+    return None
+
+# Apply the monkey-patch
+WheelInfo.check_compatible = bypass_compatibility_check
+print("Compatibility check bypassed successfully")
 
 # Install lark dependency first
+print("Installing lark dependency...")
 await micropip.install('lark')
+print("Lark installed successfully")
 
 # Install IfcOpenShell using pinned wheel URL from working config
+print("Installing IfcOpenShell wheel...")
 await micropip.install('https://cdn.jsdelivr.net/gh/IfcOpenShell/wasm-wheels@33b437e5fd5425e606f34aff602c42034ff5e6dc/ifcopenshell-0.8.1+latest-cp312-cp312-emscripten_3_1_58_wasm32.whl')
+print("IfcOpenShell installed successfully")
         \`);
         
         console.log('[v0] IfcOpenShell installed successfully');
@@ -258,12 +276,26 @@ except Exception as e:
     error_info
         \`);
         
+        if (!result) {
+          throw new Error('No result returned from Python processing');
+        }
+        
         // Convert Python result to JavaScript
-        const jsResult = result.toJs({ dict_converter: Object.fromEntries });
+        let jsResult;
+        try {
+          jsResult = result.toJs({ dict_converter: Object.fromEntries });
+        } catch (toJsError) {
+          console.error('[v0] Error converting Python result to JS:', toJsError);
+          throw new Error(\`Failed to convert Python result: \${toJsError.message}\`);
+        }
         
         // Check if processing resulted in an error
-        if (jsResult.error) {
+        if (jsResult && jsResult.error) {
           throw new Error(\`Python processing error: \${jsResult.message}\`);
+        }
+        
+        if (!jsResult || typeof jsResult !== 'object') {
+          throw new Error('Invalid result structure returned from Python processing');
         }
         
         console.log('[v0] IFC processing completed successfully using official IfcOpenShell');
