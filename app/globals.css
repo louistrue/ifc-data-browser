@@ -397,6 +397,37 @@
     backdrop-filter: saturate(1.2) blur(2px);
   }
 
+  .retro-footer {
+    height: 26px;
+    background: linear-gradient(to top,
+        color-mix(in oklab, var(--color-card), white 12%),
+        color-mix(in oklab, var(--color-card), black 4%));
+    border-top: 1px solid var(--color-border);
+    backdrop-filter: saturate(1.2) blur(2px);
+  }
+
+  .theme-xp .retro-footer {
+    background: linear-gradient(to top, #1e90ff, #1454c2);
+    border-top-color: #0d3a91;
+    color: #ffffff;
+  }
+
+  .retro-footer .mac-icon {
+    display: inline;
+  }
+
+  .retro-footer .xp-icon {
+    display: none;
+  }
+
+  .theme-xp .retro-footer .mac-icon {
+    display: none;
+  }
+
+  .theme-xp .retro-footer .xp-icon {
+    display: inline;
+  }
+
   @keyframes retro-pop {
     0% {
       opacity: 0;
