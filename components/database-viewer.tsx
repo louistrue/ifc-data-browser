@@ -379,22 +379,34 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
           </Badge>
           <Badge variant="outline" className="db-chip h-6 px-2">{data.totalEntities} entities</Badge>
           {psetStats.totalProperties > 0 && (
-            <Badge variant="outline" className="db-chip bg-green-50 text-green-700 h-6 px-2">
+            <Badge
+              variant="outline"
+              className="db-chip bg-green-50 text-green-700 h-6 px-2 hidden sm:inline-flex"
+            >
               {psetStats.totalProperties} properties
             </Badge>
           )}
           {specialTables.quantities.length > 0 && (
-            <Badge variant="outline" className="db-chip bg-orange-50 text-orange-700 h-6 px-2">
+            <Badge
+              variant="outline"
+              className="db-chip bg-orange-50 text-orange-700 h-6 px-2 hidden md:inline-flex"
+            >
               {specialTables.quantities.length} quantities
             </Badge>
           )}
           {specialTables.materials.length > 0 && (
-            <Badge variant="outline" className="db-chip bg-blue-50 text-blue-700 h-6 px-2">
+            <Badge
+              variant="outline"
+              className="db-chip bg-blue-50 text-blue-700 h-6 px-2 hidden lg:inline-flex"
+            >
               {specialTables.materials.length} materials
             </Badge>
           )}
           {specialTables.classifications.length > 0 && (
-            <Badge variant="outline" className="db-chip bg-purple-50 text-purple-700 h-6 px-2">
+            <Badge
+              variant="outline"
+              className="db-chip bg-purple-50 text-purple-700 h-6 px-2 hidden xl:inline-flex"
+            >
               {specialTables.classifications.length} classifications
             </Badge>
           )}
