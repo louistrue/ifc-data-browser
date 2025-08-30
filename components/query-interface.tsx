@@ -341,12 +341,15 @@ export function QueryInterface({ tables, entities, specialTables, psetStats, use
               </CardHeader>
               <CardContent className="p-0">
                 <div className="border-t">
-                  <ScrollArea className="h-[500px]">
-                    <Table>
+                  <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                    <Table className="min-w-full">
                       <TableHeader className="sticky top-0 bg-white border-b-2">
                         <TableRow>
                           {getResultColumns().map((column) => (
-                            <TableHead key={column} className="font-semibold bg-slate-50 border-r last:border-r-0">
+                            <TableHead
+                              key={column}
+                              className="font-semibold bg-slate-50 border-r last:border-r-0 whitespace-nowrap px-3 py-2 text-xs"
+                            >
                               {column}
                             </TableHead>
                           ))}
@@ -356,7 +359,10 @@ export function QueryInterface({ tables, entities, specialTables, psetStats, use
                         {results.map((row, index) => (
                           <TableRow key={index} className="hover:bg-slate-50">
                             {getResultColumns().map((column) => (
-                              <TableCell key={column} className="font-mono text-sm border-r last:border-r-0">
+                              <TableCell
+                                key={column}
+                                className="font-mono text-sm border-r last:border-r-0 whitespace-nowrap px-3 py-2"
+                              >
                                 {String(row[column])}
                               </TableCell>
                             ))}
@@ -364,7 +370,7 @@ export function QueryInterface({ tables, entities, specialTables, psetStats, use
                         ))}
                       </TableBody>
                     </Table>
-                  </ScrollArea>
+                  </div>
                 </div>
               </CardContent>
             </Card>
