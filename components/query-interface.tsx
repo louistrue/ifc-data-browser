@@ -20,8 +20,19 @@ import {
   BuildingIcon,
   LayersIcon,
   SearchIcon,
+  DownloadIcon,
+  FileTextIcon,
+  FileSpreadsheetIcon,
+  FileCodeIcon,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import * as XLSX from "xlsx"
 
 interface QueryInterfaceProps {
   tables: string[]
@@ -280,6 +291,66 @@ export function QueryInterface({ tables, entities, specialTables, psetStats, use
     return Object.keys(results[0])
   }
 
+  const exportToCSV = () => {
+    if (!results || results.length === 0) return
+    const columns = getResultColumns()
+    const headers = columns.join(",")
+    const rows = results.map((row) =>
+      columns
+        .map((col) => {
+          const value = row[col]
+          if (value === null || value === undefined) return '""'
+          return `"${String(value).replace(/"/g, '""')}"`
+        })
+        .join(","),
+    )
+    const csv = [headers, ...rows].join("\n")
+    const blob = new Blob([csv], { type: "text/csv" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "query_results.csv"
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const exportToExcel = () => {
+    if (!results || results.length === 0) return
+    const worksheet = XLSX.utils.json_to_sheet(results)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Results")
+    const wbout = XLSX.write(workbook, { bookType: "xlsx", type: "array" })
+    const blob = new Blob([wbout], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "query_results.xlsx"
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const exportToSQL = () => {
+    if (!results || results.length === 0) return
+    const columns = getResultColumns()
+    let sqlDump = `-- Query Results Export\n-- Generated: ${new Date().toISOString()}\n\n`
+    sqlDump += `CREATE TABLE query_results (${columns.map((c) => `${c} TEXT`).join(",")});\n\n`
+    results.forEach((row) => {
+      const values = columns
+        .map((col) => `'${String(row[col]).replace(/'/g, "''")}'`)
+        .join(", ")
+      sqlDump += `INSERT INTO query_results (${columns.join(", ")}) VALUES (${values});\n`
+    })
+    const blob = new Blob([sqlDump], { type: "text/sql" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "query_results.sql"
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
@@ -334,9 +405,30 @@ export function QueryInterface({ tables, entities, specialTables, psetStats, use
               <CardHeader className="bg-gradient-to-r from-green-50 to-green-100 border-b">
                 <CardTitle className="flex items-center justify-between">
                   <span>Query Results</span>
-                  <Badge variant="outline" className="bg-white">
-                    {results.length} rows × {getResultColumns().length} columns
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="bg-white">
+                      {results.length} rows × {getResultColumns().length} columns
+                    </Badge>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-1">
+                          <DownloadIcon className="w-4 h-4" />
+                          Export
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={exportToCSV}>
+                          <FileTextIcon className="w-4 h-4 mr-2" /> CSV
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={exportToExcel}>
+                          <FileSpreadsheetIcon className="w-4 h-4 mr-2" /> Excel
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={exportToSQL}>
+                          <FileCodeIcon className="w-4 h-4 mr-2" /> SQL
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
