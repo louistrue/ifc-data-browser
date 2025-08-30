@@ -342,7 +342,7 @@ export function QueryInterface({ tables, entities, specialTables, psetStats, use
               <CardContent className="p-0">
                 <div className="border-t">
                   <ScrollArea className="h-[500px]">
-                    <Table>
+                    <Table className="min-w-max">
                       <TableHeader className="sticky top-0 bg-white border-b-2">
                         <TableRow>
                           {getResultColumns().map((column) => (
