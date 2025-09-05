@@ -1,9 +1,10 @@
-import { HeartIcon, Github, Globe } from "lucide-react"
+import { Github, Globe } from "lucide-react"
+import CoffeeSupport from "./coffee-support"
 
 export function Footer() {
   return (
     <footer className="retro-footer">
-      <div className="container mx-auto h-6 sm:h-5 flex items-center justify-center gap-3 text-xs">
+      <div className="container mx-auto h-10 sm:h-8 flex items-center justify-center gap-3 text-xs">
         <a
           href="https://www.lt.plus"
           target="_blank"
@@ -24,11 +25,7 @@ export function Footer() {
           GitHub
         </a>
         <span className="footer-separator">•</span>
-        <span className="flex items-center gap-1 footer-text">
-          Made with
-          <HeartIcon className="h-3 w-3 text-secondary animate-pulse" />
-          by Louis Trümpler
-        </span>
+        <CoffeeSupport className="footer-text" />
       </div>
     </footer>
   )
