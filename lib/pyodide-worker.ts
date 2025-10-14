@@ -2,7 +2,17 @@
 // This runs in a separate thread to avoid blocking the main UI
 
 export interface PyodideMessage {
-  type: "init" | "process" | "progress" | "complete" | "error" | "execute_query" | "export_sqlite" | "sqlite_export"
+  type:
+    | "init"
+    | "process"
+    | "progress"
+    | "complete"
+    | "error"
+    | "execute_query"
+    | "export_sqlite"
+    | "sqlite_export"
+    | "get_schema"
+    | "schema_result"
   data?: any
   progress?: number
   step?: string
@@ -49,6 +59,9 @@ export const createPyodideWorker = async () => {
             break;
           case 'export_sqlite':
             await exportSQLiteDatabase();
+            break;
+          case 'get_schema':
+            await extractSchemaDefinition();
             break;
         }
       } catch (error) {
@@ -828,6 +841,107 @@ except Exception as e:
           type: 'error',
           data: {
             message: 'Failed to export SQLite database: ' + (error && error.message ? error.message : String(error)),
+            stack: error && error.stack ? error.stack : undefined
+          }
+        });
+      }
+    }
+
+    async function extractSchemaDefinition() {
+      try {
+        if (!pyodide) {
+          throw new Error('Pyodide not initialized');
+        }
+
+        if (!sqliteDbPath) {
+          throw new Error('No SQLite database available. Please process an IFC file first.');
+        }
+
+        await pyodide.runPythonAsync(\`
+import sqlite3
+
+if 'sqlite_db_path' not in globals():
+    sqlite_db_path = '/tmp/model.db'
+
+conn = sqlite3.connect(sqlite_db_path)
+conn.row_factory = sqlite3.Row
+cursor = conn.cursor()
+
+tables = []
+foreign_keys = []
+
+table_rows = cursor.execute("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").fetchall()
+
+for table_row in table_rows:
+    table_name = table_row["name"] if isinstance(table_row, sqlite3.Row) else table_row[0]
+    column_rows = cursor.execute(f'PRAGMA table_info("{table_name}")').fetchall()
+    columns = []
+    for column in column_rows:
+        col_name = column["name"] if isinstance(column, sqlite3.Row) else column[1]
+        col_type = column["type"] if isinstance(column, sqlite3.Row) else column[2]
+        not_null = column["notnull"] if isinstance(column, sqlite3.Row) else column[3]
+        pk = column["pk"] if isinstance(column, sqlite3.Row) else column[5]
+        columns.append({
+            "name": col_name,
+            "type": col_type or "",
+            "notNull": bool(not_null),
+            "pk": bool(pk)
+        })
+
+    tables.append({
+        "name": table_name,
+        "columns": columns
+    })
+
+    fk_rows = cursor.execute(f'PRAGMA foreign_key_list("{table_name}")').fetchall()
+    for fk in fk_rows:
+        if isinstance(fk, sqlite3.Row):
+            from_col = fk["from"]
+            to_table = fk["table"]
+            to_col = fk["to"]
+        else:
+            from_col = fk[3]
+            to_table = fk[2]
+            to_col = fk[4]
+
+        foreign_keys.append({
+            "fromTable": table_name,
+            "fromColumn": from_col,
+            "toTable": to_table,
+            "toColumn": to_col
+        })
+
+conn.close()
+
+schema_result = {
+    "tables": tables,
+    "foreignKeys": foreign_keys
+}
+        \`);
+
+        const schema = pyodide.globals.get('schema_result');
+
+        if (!schema) {
+          throw new Error('Failed to extract schema data');
+        }
+
+        let jsSchema;
+        try {
+          jsSchema = schema.toJs ? schema.toJs({ dict_converter: Object.fromEntries }) : schema;
+          jsSchema = JSON.parse(JSON.stringify(jsSchema));
+        } finally {
+          if (schema.destroy) {
+            schema.destroy();
+          }
+        }
+
+        self.postMessage({ type: 'schema_result', data: jsSchema });
+      } catch (error) {
+        console.error('[v0] Schema extraction failed:', error);
+        self.postMessage({
+          type: 'error',
+          data: {
+            message: 'Failed to extract schema: ' + (error && error.message ? error.message : String(error)),
             stack: error && error.stack ? error.stack : undefined
           }
         });
