@@ -357,9 +357,9 @@ export function QueryInterface({ tables, entities, specialTables, psetStats, use
         <div className="xl:col-span-3 space-y-6">
           {/* Query Editor */}
           <Card className="shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
-              <CardTitle className="flex items-center space-x-2">
-                <DatabaseIcon className="w-5 h-5 text-slate-700" />
+            <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200 dark:from-slate-900 dark:to-slate-950 dark:border-slate-800">
+              <CardTitle className="flex items-center space-x-2 text-slate-900 dark:text-slate-100">
+                <DatabaseIcon className="w-5 h-5 text-slate-700 dark:text-slate-200" />
                 <span>Advanced SQL Query Editor</span>
               </CardTitle>
             </CardHeader>
@@ -371,7 +371,7 @@ export function QueryInterface({ tables, entities, specialTables, psetStats, use
 -- Example: SELECT * FROM IfcWall WHERE is_loadbearing = 'Yes' LIMIT 10;"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="min-h-[250px] font-mono text-sm bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+                  className="min-h-[250px] font-mono text-sm bg-slate-50 border border-slate-200 text-slate-900 transition-colors focus:bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 dark:focus:bg-slate-900"
                 />
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
@@ -384,15 +384,15 @@ export function QueryInterface({ tables, entities, specialTables, psetStats, use
                       {isExecuting ? "Executing..." : "Execute Query"}
                     </Button>
                     {results && (
-                      <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800">
                         ✓ {results.length} rows returned
                       </Badge>
                     )}
                   </div>
                 </div>
                 {error && (
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-700 font-medium">{error}</p>
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg dark:bg-red-950/50 dark:border-red-900">
+                    <p className="text-sm text-red-700 font-medium dark:text-red-200">{error}</p>
                   </div>
                 )}
               </div>
@@ -402,11 +402,11 @@ export function QueryInterface({ tables, entities, specialTables, psetStats, use
           {/* Query Results */}
           {results && (
             <Card className="shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-green-50 to-green-100 border-b">
-                <CardTitle className="flex items-center justify-between">
+              <CardHeader className="bg-gradient-to-r from-green-50 to-green-100 border-b border-green-200 dark:from-green-950 dark:to-green-900 dark:border-green-900">
+                <CardTitle className="flex items-center justify-between text-slate-900 dark:text-slate-100">
                   <span>Query Results</span>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="bg-white">
+                    <Badge variant="outline" className="bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200">
                       {results.length} rows × {getResultColumns().length} columns
                     </Badge>
                     <DropdownMenu>
@@ -432,15 +432,15 @@ export function QueryInterface({ tables, entities, specialTables, psetStats, use
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="border-t">
+                <div className="border-t border-slate-200 dark:border-slate-800">
                   <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
                     <Table className="min-w-full">
-                      <TableHeader className="sticky top-0 bg-white border-b-2">
+                      <TableHeader className="sticky top-0 bg-white border-b-2 border-slate-200 dark:bg-slate-950 dark:border-slate-800">
                         <TableRow>
                           {getResultColumns().map((column) => (
                             <TableHead
                               key={column}
-                              className="font-semibold bg-slate-50 border-r last:border-r-0 whitespace-nowrap px-3 py-2 text-xs"
+                              className="font-semibold bg-slate-50 border-r last:border-r-0 whitespace-nowrap px-3 py-2 text-xs dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200"
                             >
                               {column}
                             </TableHead>
@@ -449,11 +449,11 @@ export function QueryInterface({ tables, entities, specialTables, psetStats, use
                       </TableHeader>
                       <TableBody>
                         {results.map((row, index) => (
-                          <TableRow key={index} className="hover:bg-slate-50">
+                          <TableRow key={index} className="hover:bg-slate-50 dark:hover:bg-slate-900">
                             {getResultColumns().map((column) => (
                               <TableCell
                                 key={column}
-                                className="font-mono text-sm border-r last:border-r-0 whitespace-nowrap px-3 py-2"
+                                className="font-mono text-sm border-r last:border-r-0 whitespace-nowrap px-3 py-2 dark:border-slate-800 dark:text-slate-200"
                               >
                                 {String(row[column])}
                               </TableCell>
@@ -474,10 +474,10 @@ export function QueryInterface({ tables, entities, specialTables, psetStats, use
           <Card className="shadow-md">
             <Collapsible open={isTablesOpen} onOpenChange={setIsTablesOpen}>
               <CollapsibleTrigger asChild>
-                <CardHeader className="cursor-pointer hover:bg-slate-50 transition-colors pb-3">
-                  <CardTitle className="flex items-center justify-between text-sm">
+                <CardHeader className="cursor-pointer hover:bg-slate-50 transition-colors pb-3 dark:hover:bg-slate-900">
+                  <CardTitle className="flex items-center justify-between text-sm text-slate-900 dark:text-slate-100">
                     <div className="flex items-center space-x-2">
-                      <DatabaseIcon className="w-4 h-4" />
+                      <DatabaseIcon className="w-4 h-4 text-slate-700 dark:text-slate-200" />
                       <span>Tables ({tables.length})</span>
                     </div>
                     <ChevronDownIcon className={`w-4 h-4 transition-transform ${isTablesOpen ? "rotate-180" : ""}`} />
@@ -491,10 +491,10 @@ export function QueryInterface({ tables, entities, specialTables, psetStats, use
                       {tables.map((table) => (
                         <div
                           key={table}
-                          className="flex items-center justify-between p-2 bg-slate-50 rounded text-xs hover:bg-slate-100 transition-colors"
+                          className="flex items-center justify-between p-2 bg-slate-50 rounded text-xs hover:bg-slate-100 transition-colors dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-slate-100"
                         >
                           <span className="font-mono truncate">{table}</span>
-                          <Badge variant="outline" className="text-xs ml-2 flex-shrink-0">
+                          <Badge variant="outline" className="text-xs ml-2 flex-shrink-0 dark:border-slate-700 dark:text-slate-200">
                             {entities[table]?.length || 0}
                           </Badge>
                         </div>
@@ -508,8 +508,8 @@ export function QueryInterface({ tables, entities, specialTables, psetStats, use
 
           <Card className="shadow-md">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center space-x-2 text-sm">
-                <BookOpenIcon className="w-4 h-4" />
+              <CardTitle className="flex items-center space-x-2 text-sm text-slate-900 dark:text-slate-100">
+                <BookOpenIcon className="w-4 h-4 text-slate-700 dark:text-slate-200" />
                 <span>Query Templates</span>
               </CardTitle>
             </CardHeader>
@@ -518,7 +518,7 @@ export function QueryInterface({ tables, entities, specialTables, psetStats, use
                 <div className="space-y-4">
                   {sampleQueries.map((category, categoryIndex) => (
                     <div key={categoryIndex} className="space-y-2">
-                      <h4 className="font-semibold text-xs text-slate-600 uppercase tracking-wide border-b pb-1">
+                      <h4 className="font-semibold text-xs text-slate-600 uppercase tracking-wide border-b pb-1 dark:text-slate-300 dark:border-slate-800">
                         {category.category}
                       </h4>
                       <div className="space-y-2">
@@ -527,13 +527,13 @@ export function QueryInterface({ tables, entities, specialTables, psetStats, use
                           return (
                             <div
                               key={index}
-                              className="p-3 border rounded-lg hover:bg-slate-50 transition-colors group"
+                              className="p-3 border rounded-lg hover:bg-slate-50 transition-colors group dark:border-slate-800 dark:hover:bg-slate-900"
                             >
                               <div className="flex items-start space-x-2 mb-2">
-                                <IconComponent className="w-4 h-4 text-slate-500 mt-0.5 flex-shrink-0" />
+                                <IconComponent className="w-4 h-4 text-slate-500 mt-0.5 flex-shrink-0 dark:text-slate-300" />
                                 <div className="flex-1 min-w-0">
-                                  <h5 className="font-medium text-sm text-slate-900 truncate">{sample.name}</h5>
-                                  <p className="text-xs text-slate-600 mt-1 line-clamp-2">{sample.description}</p>
+                                  <h5 className="font-medium text-sm text-slate-900 truncate dark:text-slate-100">{sample.name}</h5>
+                                  <p className="text-xs text-slate-600 mt-1 line-clamp-2 dark:text-slate-300">{sample.description}</p>
                                 </div>
                               </div>
                               <div className="flex space-x-1">
@@ -541,7 +541,7 @@ export function QueryInterface({ tables, entities, specialTables, psetStats, use
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => copyQuery(sample.sql)}
-                                  className="h-7 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                  className="h-7 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity dark:text-slate-300"
                                 >
                                   <CopyIcon className="w-3 h-3" />
                                 </Button>
@@ -549,7 +549,7 @@ export function QueryInterface({ tables, entities, specialTables, psetStats, use
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => loadSampleQuery(sample)}
-                                  className="h-7 px-2 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100"
+                                  className="h-7 px-2 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20"
                                 >
                                   Use Template
                                 </Button>
