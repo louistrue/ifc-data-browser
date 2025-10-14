@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +9,7 @@ import { ArrowLeftIcon, DatabaseIcon, TableIcon, InfoIcon, ChevronRightIcon, Has
 import type { ProcessingResult } from "@/lib/pyodide-worker"
 import { DataTable } from "@/components/data-table"
 import { QueryInterface } from "@/components/query-interface"
+import { SchemaExplorer } from "@/components/schema/schema-explorer"
 
 interface DatabaseViewerProps {
   data: ProcessingResult
@@ -20,19 +21,26 @@ interface DatabaseViewerProps {
 export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc", usePyodide }: DatabaseViewerProps) {
   const [selectedTable, setSelectedTable] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("overview")
+  const [hasLoadedSchemaTab, setHasLoadedSchemaTab] = useState(false)
   const [showAllEntities, setShowAllEntities] = useState(false)
 
   // Data received silently
 
   const handleTableSelect = (tableName: string) => {
     setSelectedTable(tableName)
-    // setActiveTab("entities") - removed this line
+    setActiveTab("entities")
   }
 
   const handleBackToOverview = () => {
     setSelectedTable(null)
     // setActiveTab("overview") - removed this line
   }
+
+  useEffect(() => {
+    if (activeTab === "schema") {
+      setHasLoadedSchemaTab(true)
+    }
+  }, [activeTab])
 
 
 
@@ -434,6 +442,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
           <TabsTrigger className="db-tabs-trigger" value="quantities">Quantities</TabsTrigger>
           <TabsTrigger className="db-tabs-trigger" value="materials">Materials</TabsTrigger>
           <TabsTrigger className="db-tabs-trigger" value="classifications">Classifications</TabsTrigger>
+          <TabsTrigger className="db-tabs-trigger" value="schema">Schema</TabsTrigger>
           <TabsTrigger className="db-tabs-trigger" value="query">Query</TabsTrigger>
         </TabsList>
 
@@ -690,6 +699,25 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
             customTitle="IFC Classifications"
             description="IFC classification entities including IfcClassification, IfcClassificationReference, and classification relationships"
           />
+        </TabsContent>
+
+        <TabsContent value="schema" forceMount className="space-y-6">
+          {hasLoadedSchemaTab && usePyodide?.executeQuery ? (
+            <SchemaExplorer
+              executeQuery={usePyodide.executeQuery}
+              schemaName={data.schema}
+              fileName={fileName}
+              activeTable={selectedTable}
+              isActive={activeTab === "schema"}
+              onSelectTable={(table) => {
+                handleTableSelect(table)
+              }}
+            />
+          ) : (
+            <div className="flex h-[520px] w-full items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+              Open this tab to visualize the SQLite schema for the current model.
+            </div>
+          )}
         </TabsContent>
 
         {/* Enhanced Query Interface */}
