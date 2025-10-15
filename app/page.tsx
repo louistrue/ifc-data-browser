@@ -486,40 +486,6 @@ export default function IFCDataBrowser() {
                     </div>
                   </div>
 
-                  {/* Use Cases & Applications Window */}
-                  <div className="retro-window retro-pop" id="usecases-window">
-                    <div className="retro-titlebar">
-                      <WindowsControls
-                        variant={uiTheme}
-                        onClose={() => handleWindowAction('usecases-window', 'close')}
-                        onMinimize={() => handleWindowAction('usecases-window', 'minimize')}
-                        onMaximize={() => handleWindowAction('usecases-window', 'maximize')}
-                      />
-                      <span className="retro-title">Use Cases & Applications</span>
-                    </div>
-                    <div className="retro-window-content">
-                      <div className="space-y-3 text-xs">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
-                            <BookOpenIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                            <span className="text-blue-700 dark:text-blue-300">Query building geometry for analysis</span>
-                          </div>
-                          <div className="flex items-center gap-2 p-2 bg-purple-50 dark:bg-purple-900/20 rounded border border-purple-200 dark:border-purple-800">
-                            <GraduationCapIcon className="w-3 h-3 text-purple-600 dark:text-purple-400" />
-                            <span className="text-purple-700 dark:text-purple-300">Extract material data for LCA studies</span>
-                          </div>
-                          <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
-                            <CheckCircleIcon className="w-3 h-3 text-green-600 dark:text-green-400" />
-                            <span className="text-green-700 dark:text-green-300">Validate compliance rules via SQL</span>
-                          </div>
-                          <div className="flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-900/20 rounded border border-orange-200 dark:border-orange-800">
-                            <DatabaseIcon className="w-3 h-3 text-orange-600 dark:text-orange-400" />
-                            <span className="text-orange-700 dark:text-orange-300">Export datasets for research</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
 
                 </div>
               </div>
