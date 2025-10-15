@@ -226,7 +226,7 @@ export default function IFCDataBrowser() {
                     Explore IFC Building Data as SQL
                   </h1>
                   <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto academic-text">
-                    Convert IFC models into queryable SQL databases. Built for researchers and engineers.
+                    Convert IFC models into queryable SQL databases.
                   </p>
 
                   {/* Inline Badges */}
