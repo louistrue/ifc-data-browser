@@ -393,38 +393,6 @@ export default function IFCDataBrowser() {
                     </div>
                   </div>
 
-                  {/* Technology Stack Window */}
-                  <div className="retro-window retro-pop" id="builtwith-window">
-                    <div className="retro-titlebar">
-                      <WindowsControls
-                        variant={uiTheme}
-                        onClose={() => handleWindowAction('builtwith-window', 'close')}
-                        onMinimize={() => handleWindowAction('builtwith-window', 'minimize')}
-                        onMaximize={() => handleWindowAction('builtwith-window', 'maximize')}
-                      />
-                      <span className="retro-title">Technology Stack</span>
-                    </div>
-                    <div className="retro-window-content">
-                      <div className="space-y-2 text-xs">
-                        <div className="flex items-center justify-between p-2 bg-muted/30 rounded border">
-                          <span className="text-foreground">IfcOpenShell</span>
-                          <Badge variant="outline" className="text-[10px]">Core Engine</Badge>
-                        </div>
-                        <div className="flex items-center justify-between p-2 bg-muted/30 rounded border">
-                          <span className="text-foreground">Pyodide</span>
-                          <Badge variant="outline" className="text-[10px]">WebAssembly</Badge>
-                        </div>
-                        <div className="flex items-center justify-between p-2 bg-muted/30 rounded border">
-                          <span className="text-foreground">Next.js</span>
-                          <Badge variant="outline" className="text-[10px]">Frontend</Badge>
-                        </div>
-                        <div className="flex items-center justify-between p-2 bg-muted/30 rounded border">
-                          <span className="text-foreground">SQLite</span>
-                          <Badge variant="outline" className="text-[10px]">Database</Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
 
                   {/* Research Resources Window */}
                   <div className="retro-window retro-pop" id="resources-window">
