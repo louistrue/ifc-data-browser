@@ -52,13 +52,13 @@ export function FileUploadZone({ onFileUpload, disabled = false }: FileUploadZon
   })
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-2">
       <Card className="w-full">
-        <CardContent className="p-6 sm:p-8">
+        <CardContent className="p-3">
           <div
             {...getRootProps()}
             className={cn(
-              "border-2 border-dashed rounded-lg p-8 sm:p-12 text-center transition-all duration-200",
+              "border-2 border-dashed rounded-lg p-4 text-center transition-all duration-200",
               disabled
                 ? "cursor-not-allowed opacity-50 border-muted-foreground/30"
                 : "cursor-pointer hover:border-primary/50 hover:bg-muted/50 hover:scale-[1.02]",
@@ -69,75 +69,55 @@ export function FileUploadZone({ onFileUpload, disabled = false }: FileUploadZon
           >
             <input {...getInputProps()} />
 
-            <div className="flex flex-col items-center space-y-3 sm:space-y-4">
+            <div className="flex flex-col items-center space-y-2">
               <div
                 className={cn(
-                  "w-16 h-16 rounded-full flex items-center justify-center transition-colors",
+                  "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
                   disabled ? "bg-muted-foreground/10" : isDragActive ? "bg-primary/20" : "bg-primary/10",
                 )}
               >
                 <UploadIcon
-                  className={cn("w-8 h-8 transition-colors", disabled ? "text-muted-foreground/50" : "text-primary")}
+                  className={cn("w-5 h-5 transition-colors", disabled ? "text-muted-foreground/50" : "text-primary")}
                 />
               </div>
 
-              <div className="space-y-1.5 sm:space-y-2">
+              <div className="space-y-1">
                 <h3
                   className={cn(
-                    "font-inter text-lg sm:text-xl font-semibold",
+                    "font-inter text-sm font-semibold",
                     disabled ? "text-muted-foreground" : "text-foreground",
                   )}
                 >
                   {disabled
-                    ? "Initializing WebAssembly..."
+                    ? "Initializing..."
                     : isDragActive
-                      ? "Drop your IFC file here"
+                      ? "Drop IFC file here"
                       : "Upload IFC File"}
                 </h3>
-                <p className="text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {disabled
-                    ? "Please wait while we load the processing engine"
-                    : "Drag and drop your IFC file here, or click to browse"}
+                    ? "Loading processing engine"
+                    : "Drag & drop or click to browse"}
                 </p>
-                <p className="text-xs sm:text-sm text-muted-foreground">Supports .ifc files up to 100MB</p>
+                <p className="text-xs text-muted-foreground">Up to 100MB</p>
               </div>
 
-              <Button variant="outline" className="mt-3 sm:mt-4 bg-transparent" disabled={disabled}>
-                <FileIcon className="w-4 h-4 mr-2" />
+              <Button variant="outline" size="sm" className="mt-1 bg-transparent" disabled={disabled}>
+                <FileIcon className="w-3 h-3 mr-1" />
                 Choose File
               </Button>
             </div>
           </div>
 
           {error && (
-            <div className="mt-3 sm:mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center space-x-2">
-              <AlertCircleIcon className="w-4 h-4 text-destructive flex-shrink-0" />
-              <span className="text-sm text-destructive">{error}</span>
+            <div className="mt-2 p-2 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center space-x-2">
+              <AlertCircleIcon className="w-3 h-3 text-destructive flex-shrink-0" />
+              <span className="text-xs text-destructive">{error}</span>
             </div>
           )}
         </CardContent>
       </Card>
 
-      <Card className="bg-muted/30">
-        <CardContent className="p-6">
-          <div className="flex items-start space-x-3">
-            <InfoIcon className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-            <div className="space-y-2">
-              <h4 className="font-medium text-foreground">About IFC Files</h4>
-              <p className="text-sm text-muted-foreground">
-                Industry Foundation Classes (IFC) is an open standard for Building Information Modeling (BIM) data. Our
-                tool converts your IFC files into a queryable SQL database format using IfcOpenShell, allowing you to
-                analyze building data, relationships, and properties efficiently.
-              </p>
-              <div className="flex flex-wrap gap-2 mt-3">
-                <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-md">IFC2X3</span>
-                <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-md">IFC4</span>
-                <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-md">IFC4X3</span>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }
