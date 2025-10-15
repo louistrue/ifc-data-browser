@@ -158,7 +158,7 @@ function SchemaExplorerInner({
     if (hasRequested && !schema && !loadingSchema && !error) {
       loadSchema().catch((err) => setError(err instanceof Error ? err.message : String(err)))
     }
-  }, [hasRequested, schema, loadingSchema, error, loadSchema])
+  }, [hasRequested, schema, loadingSchema, error])
 
   const runLayout = useCallback(
     async (skipSavedPositions = false) => {
@@ -220,9 +220,9 @@ function SchemaExplorerInner({
         current.map((node) =>
           node.data?.isActive
             ? {
-                ...node,
-                data: { ...node.data, isActive: false },
-              }
+              ...node,
+              data: { ...node.data, isActive: false },
+            }
             : node,
         ),
       )
@@ -233,9 +233,9 @@ function SchemaExplorerInner({
       current.map((node) =>
         node.id === activeTable
           ? {
-              ...node,
-              data: { ...node.data, isActive: true },
-            }
+            ...node,
+            data: { ...node.data, isActive: true },
+          }
           : node.data?.isActive
             ? { ...node, data: { ...node.data, isActive: false } }
             : node,
@@ -329,7 +329,7 @@ function SchemaExplorerInner({
         )}
 
         {schema && !error && (
-          <div className={cn("h-[520px] w-full", isBusy && "pointer-events-none opacity-90") }>
+          <div className={cn("h-[520px] w-full", isBusy && "pointer-events-none opacity-90")}>
             <ReactFlow
               nodes={nodes}
               edges={edges}

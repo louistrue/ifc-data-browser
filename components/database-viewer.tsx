@@ -702,7 +702,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
         </TabsContent>
 
         <TabsContent value="schema" forceMount className="space-y-6">
-          {hasLoadedSchemaTab && usePyodide?.executeQuery ? (
+          {hasLoadedSchemaTab && usePyodide?.executeQuery && data.tables.length > 0 ? (
             <SchemaExplorer
               executeQuery={usePyodide.executeQuery}
               schemaName={data.schema}
@@ -715,7 +715,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
             />
           ) : (
             <div className="flex h-[520px] w-full items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
-              Open this tab to visualize the SQLite schema for the current model.
+              {data.tables.length === 0 ? 'Database is being prepared...' : 'Open this tab to visualize the SQLite schema for the current model.'}
             </div>
           )}
         </TabsContent>
