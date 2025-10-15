@@ -9,6 +9,7 @@ import { ArrowLeftIcon, DatabaseIcon, TableIcon, InfoIcon, ChevronRightIcon, Has
 import type { ProcessingResult } from "@/lib/pyodide-worker"
 import { DataTable } from "@/components/data-table"
 import { QueryInterface } from "@/components/query-interface"
+import { SchemaTab } from "@/components/schema/schema-tab"
 
 interface DatabaseViewerProps {
   data: ProcessingResult
@@ -26,7 +27,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
 
   const handleTableSelect = (tableName: string) => {
     setSelectedTable(tableName)
-    // setActiveTab("entities") - removed this line
+    setActiveTab("overview")
   }
 
   const handleBackToOverview = () => {
@@ -434,6 +435,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
           <TabsTrigger className="db-tabs-trigger" value="quantities">Quantities</TabsTrigger>
           <TabsTrigger className="db-tabs-trigger" value="materials">Materials</TabsTrigger>
           <TabsTrigger className="db-tabs-trigger" value="classifications">Classifications</TabsTrigger>
+          <TabsTrigger className="db-tabs-trigger" value="schema">Schema</TabsTrigger>
           <TabsTrigger className="db-tabs-trigger" value="query">Query</TabsTrigger>
         </TabsList>
 
@@ -689,6 +691,15 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
             onBack={() => setActiveTab("overview")}
             customTitle="IFC Classifications"
             description="IFC classification entities including IfcClassification, IfcClassificationReference, and classification relationships"
+          />
+        </TabsContent>
+
+        <TabsContent value="schema" className="space-y-6">
+          <SchemaTab
+            usePyodide={usePyodide}
+            fileKey={fileName}
+            selectedTable={selectedTable}
+            onSelectTable={handleTableSelect}
           />
         </TabsContent>
 

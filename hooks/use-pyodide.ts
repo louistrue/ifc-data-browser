@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react"
 import { createPyodideWorker, type PyodideMessage, type ProcessingResult } from "@/lib/pyodide-worker"
+import type { SchemaDef } from "@/lib/schema"
 
 export interface ProcessingStatus {
   isProcessing: boolean
@@ -220,6 +221,50 @@ export function usePyodide() {
     [isInitialized],
   )
 
+  const getSchema = useCallback(
+    async (): Promise<SchemaDef> => {
+      if (!workerRef.current || !isInitialized) {
+        throw new Error("Pyodide not initialized")
+      }
+
+      return new Promise<SchemaDef>((resolve, reject) => {
+        const worker = workerRef.current!
+
+        worker.postMessage({ type: "get_schema" })
+
+        const timeout = setTimeout(() => {
+          reject(new Error("Schema extraction timeout"))
+        }, 30000)
+
+        const originalOnMessage = worker.onmessage
+
+        worker.onmessage = (event) => {
+          const { type, data } = event.data as PyodideMessage
+
+          if (type === "schema_result") {
+            clearTimeout(timeout)
+            worker.onmessage = originalOnMessage
+            resolve(data as SchemaDef)
+          } else if (type === "error") {
+            clearTimeout(timeout)
+            worker.onmessage = originalOnMessage
+            reject(new Error(data?.message || "Schema extraction failed"))
+          } else if (originalOnMessage) {
+            originalOnMessage.call(worker, event)
+          }
+        }
+
+        worker.onerror = (error) => {
+          clearTimeout(timeout)
+          console.error("[v0] Schema worker error:", error)
+          worker.onmessage = originalOnMessage
+          reject(new Error("Worker schema extraction failed"))
+        }
+      })
+    },
+    [isInitialized],
+  )
+
   const exportSQLite = useCallback(
     async (): Promise<Uint8Array> => {
       if (!workerRef.current || !isInitialized) {
@@ -299,6 +344,7 @@ export function usePyodide() {
     initializePyodide,
     processIfcFile,
     executeQuery,
+    getSchema,
     exportSQLite,
     cleanup,
   }
