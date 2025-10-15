@@ -25,4 +25,5 @@ export interface SchemaDef {
 export interface SchemaNodeData {
   table: TableDef
   isSelected?: boolean
+  connectedHandles?: Set<string>
 }

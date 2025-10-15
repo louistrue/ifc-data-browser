@@ -18,10 +18,17 @@ import "reactflow/dist/style.css"
 
 import { Button } from "@/components/ui/button"
 import type { SchemaDef, SchemaNodeData } from "@/lib/schema"
-import { applyAutoLayout } from "@/lib/schema-layout"
+import { applyLayout, type LayoutAlgorithm } from "@/lib/schema-layout"
 import { mapSchemaToFlow } from "@/lib/schema-flow"
+import { enhanceSchemaWithRelationships } from "@/lib/schema-inference"
+import { filterEdgesByRelationships, DEFAULT_RELATIONSHIP_FILTER, type RelationshipFilter } from "@/lib/schema-filter"
+import { SchemaToolbar } from "./schema-toolbar"
 
 import { DbTableNode } from "./db-table-node"
+
+// Create stable references to prevent React Flow warnings
+const stableNodeTypes = { schemaTable: DbTableNode }
+const stableEdgeTypes = {}
 
 interface SchemaTabProps {
   usePyodide: any
@@ -76,13 +83,18 @@ function SchemaFlow({
   const [schema, setSchema] = useState<SchemaDef | null>(null)
   const [nodes, setNodes] = useState<Node<SchemaNodeData>[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
+  const [filteredEdges, setFilteredEdges] = useState<Edge[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
+  const [layoutAlgorithm, setLayoutAlgorithm] = useState<LayoutAlgorithm>('grid')
+  const [relationshipFilters, setRelationshipFilters] = useState<RelationshipFilter>(DEFAULT_RELATIONSHIP_FILTER)
   const reactFlow = useReactFlow<SchemaNodeData>()
   const hasFitView = useRef(false)
 
-  const nodeTypes = useMemo(() => ({ schemaTable: DbTableNode }), [])
+  // Use stable references to prevent React Flow warnings
+  const nodeTypes = stableNodeTypes
+  const edgeTypes = stableEdgeTypes
 
   useEffect(() => {
     let isMounted = true
@@ -100,7 +112,23 @@ function SchemaFlow({
         if (!isMounted) return
 
         setSchema(schemaResult)
-        const { nodes: mappedNodes, edges: mappedEdges } = mapSchemaToFlow(schemaResult)
+
+        // Enhance schema with inferred relationships
+        const enhancedSchema = enhanceSchemaWithRelationships(schemaResult)
+        console.log('[Schema] Enhanced schema:', {
+          originalFKCount: schemaResult.foreignKeys.length,
+          enhancedFKCount: enhancedSchema.foreignKeys.length,
+          inferredCount: enhancedSchema.foreignKeys.length - schemaResult.foreignKeys.length
+        })
+
+        const { nodes: mappedNodes, edges: mappedEdges } = mapSchemaToFlow(enhancedSchema)
+
+        console.log('[Schema] Mapping schema to flow:', {
+          nodeCount: mappedNodes.length,
+          edgeCount: mappedEdges.length,
+          edges: mappedEdges.map(e => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle }))
+        })
+
         const storedPositions = readStoredLayout(fileKey)
         const hasCompleteLayout = storedPositions && storedPositions.size === mappedNodes.length
 
@@ -108,20 +136,32 @@ function SchemaFlow({
           const stored = storedPositions?.get(node.id)
           return stored
             ? {
-                ...node,
-                position: stored,
-              }
+              ...node,
+              position: stored,
+            }
             : node
         })
 
         if (!hasCompleteLayout) {
-          const laidOut = await applyAutoLayout(nodesWithPositions, mappedEdges)
+          const laidOut = await applyLayout(nodesWithPositions, mappedEdges, layoutAlgorithm)
           nodesWithPositions = laidOut.nodes
           storeLayout(nodesWithPositions, fileKey)
         }
 
         setNodes(nodesWithPositions)
         setEdges(mappedEdges)
+
+        // Apply initial filtering
+        const initialFilteredEdges = filterEdgesByRelationships(mappedEdges, relationshipFilters)
+        setFilteredEdges(initialFilteredEdges)
+
+        console.log('[Schema] Setting nodes and edges:', {
+          finalNodeCount: nodesWithPositions.length,
+          finalEdgeCount: mappedEdges.length,
+          nodeIds: nodesWithPositions.map(n => n.id),
+          edgeIds: mappedEdges.map(e => e.id)
+        })
+
         hasFitView.current = false
       } catch (err: any) {
         if (!isMounted) return
@@ -163,6 +203,36 @@ function SchemaFlow({
     )
   }, [selectedTable])
 
+  // Update nodes with connected handles information
+  useEffect(() => {
+    const connectedHandlesMap = new Map<string, Set<string>>()
+
+    filteredEdges.forEach(edge => {
+      if (edge.sourceHandle) {
+        if (!connectedHandlesMap.has(edge.source)) {
+          connectedHandlesMap.set(edge.source, new Set())
+        }
+        connectedHandlesMap.get(edge.source)!.add(edge.sourceHandle)
+      }
+      if (edge.targetHandle) {
+        if (!connectedHandlesMap.has(edge.target)) {
+          connectedHandlesMap.set(edge.target, new Set())
+        }
+        connectedHandlesMap.get(edge.target)!.add(edge.targetHandle)
+      }
+    })
+
+    setNodes((current) =>
+      current.map((node) => ({
+        ...node,
+        data: {
+          ...node.data,
+          connectedHandles: connectedHandlesMap.get(node.id) || new Set(),
+        },
+      })),
+    )
+  }, [filteredEdges])
+
   useEffect(() => {
     if (nodes.length > 0 && !hasFitView.current) {
       hasFitView.current = true
@@ -192,21 +262,86 @@ function SchemaFlow({
     [onSelectTable],
   )
 
-  const handleAutoLayout = useCallback(async () => {
-    const { nodes: laidOut } = await applyAutoLayout(nodes, edges)
+  const handleLayoutChange = useCallback(async (newLayout: LayoutAlgorithm) => {
+    setLayoutAlgorithm(newLayout)
+
+    // Preserve connected handles when changing layout
+    const connectedHandlesMap = new Map<string, Set<string>>()
+    filteredEdges.forEach(edge => {
+      if (edge.sourceHandle) {
+        if (!connectedHandlesMap.has(edge.source)) {
+          connectedHandlesMap.set(edge.source, new Set())
+        }
+        connectedHandlesMap.get(edge.source)!.add(edge.sourceHandle)
+      }
+      if (edge.targetHandle) {
+        if (!connectedHandlesMap.has(edge.target)) {
+          connectedHandlesMap.set(edge.target, new Set())
+        }
+        connectedHandlesMap.get(edge.target)!.add(edge.targetHandle)
+      }
+    })
+
+    const nodesWithHandles = nodes.map(node => ({
+      ...node,
+      data: {
+        ...node.data,
+        connectedHandles: connectedHandlesMap.get(node.id) || new Set()
+      }
+    }))
+
+    const { nodes: laidOut } = await applyLayout(nodesWithHandles, edges, newLayout)
     storeLayout(laidOut, fileKey)
     setNodes(laidOut)
     hasFitView.current = false
-  }, [edges, fileKey, nodes])
+  }, [edges, fileKey, nodes, filteredEdges])
+
+  const handleFilterChange = useCallback((newFilters: RelationshipFilter) => {
+    setRelationshipFilters(newFilters)
+    const filtered = filterEdgesByRelationships(edges, newFilters)
+    setFilteredEdges(filtered)
+  }, [edges])
 
   const handleResetLayout = useCallback(async () => {
     if (!schema) return
+
+    // Calculate connected handles
+    const connectedHandlesMap = new Map<string, Set<string>>()
+    filteredEdges.forEach(edge => {
+      if (edge.sourceHandle) {
+        if (!connectedHandlesMap.has(edge.source)) {
+          connectedHandlesMap.set(edge.source, new Set())
+        }
+        connectedHandlesMap.get(edge.source)!.add(edge.sourceHandle)
+      }
+      if (edge.targetHandle) {
+        if (!connectedHandlesMap.has(edge.target)) {
+          connectedHandlesMap.set(edge.target, new Set())
+        }
+        connectedHandlesMap.get(edge.target)!.add(edge.targetHandle)
+      }
+    })
+
     const { nodes: mappedNodes } = mapSchemaToFlow(schema)
-    const { nodes: laidOut } = await applyAutoLayout(mappedNodes, edges)
+
+    // Add connected handles to nodes
+    const nodesWithHandles = mappedNodes.map(node => ({
+      ...node,
+      data: {
+        ...node.data,
+        connectedHandles: connectedHandlesMap.get(node.id) || new Set()
+      }
+    }))
+
+    const { nodes: laidOut } = await applyLayout(nodesWithHandles, edges, layoutAlgorithm)
     storeLayout(laidOut, fileKey)
     setNodes(laidOut)
     hasFitView.current = false
-  }, [edges, fileKey, schema])
+  }, [edges, fileKey, schema, layoutAlgorithm, filteredEdges])
+
+  const handleFitView = useCallback(() => {
+    reactFlow.fitView({ padding: 0.2 })
+  }, [reactFlow])
 
   if (isLoading) {
     return (
@@ -243,31 +378,34 @@ function SchemaFlow({
 
   return (
     <div className="h-[600px] w-full">
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-medium text-foreground">Entity Relationship Graph</h3>
-          <p className="text-xs text-muted-foreground">Drag tables to refine layout. Your changes are saved automatically.</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleAutoLayout}>
-            Auto-layout
-          </Button>
-          <Button variant="secondary" size="sm" onClick={handleResetLayout}>
-            Reset layout
-          </Button>
-        </div>
+      <div className="mb-3">
+        <SchemaToolbar
+          currentLayout={layoutAlgorithm}
+          currentFilters={relationshipFilters}
+          onLayoutChange={handleLayoutChange}
+          onFilterChange={handleFilterChange}
+          onResetLayout={handleResetLayout}
+          onFitView={handleFitView}
+          edgeCount={edges.length}
+          filteredEdgeCount={filteredEdges.length}
+        />
       </div>
-      <div className="h-[520px] w-full overflow-hidden rounded-md border">
+      <div className="h-[520px] w-full overflow-visible rounded-md border">
         <ReactFlow<SchemaNodeData>
           nodes={nodes}
-          edges={edges}
+          edges={filteredEdges}
           onNodesChange={handleNodesChange}
           onNodeClick={handleNodeClick}
           fitView
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           nodesDraggable
           panOnDrag
           zoomOnScroll
+          defaultEdgeOptions={{
+            style: { strokeWidth: 2, stroke: '#3b82f6' },
+            animated: true
+          }}
         >
           <Background gap={16} />
           <MiniMap pannable zoomable />
