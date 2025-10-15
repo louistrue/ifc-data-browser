@@ -5,7 +5,9 @@ import { FileUploadZone } from "@/components/file-upload-zone"
 import { ProcessingStatus } from "@/components/processing-status"
 import { DatabaseViewer } from "@/components/database-viewer"
 import { Header } from "@/components/header"
+import { Footer } from "@/components/footer"
 import { usePyodide } from "@/hooks/use-pyodide"
+import { useOsTheme } from "@/components/os-theme-provider"
 import { Badge } from "@/components/ui/badge"
 import { WindowsControls } from "@/components/ui/windows-controls"
 import {
@@ -37,32 +39,10 @@ export default function IFCDataBrowser() {
   const [databaseData, setDatabaseData] = useState<ProcessingResult | null>(null)
   const [mounted, setMounted] = useState(false)
   const [isAboutExpanded, setIsAboutExpanded] = useState(false)
-  const [uiTheme, setUiTheme] = useState<'mac' | 'xp'>('mac')
   const [windowStates, setWindowStates] = useState<Record<string, { minimized: boolean; maximized: boolean; closed: boolean }>>({})
 
-  // Sync with header theme - detect if we're on Mac and set initial theme
-  useEffect(() => {
-    const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent)
-    setUiTheme(isMac ? 'xp' : 'mac') // Mac users get XP theme by default
-  }, [])
-
-  // Listen for theme changes from header
-  useEffect(() => {
-    const handleThemeChange = () => {
-      const root = document.documentElement
-      const isXpTheme = root.classList.contains('theme-xp')
-      setUiTheme(isXpTheme ? 'xp' : 'mac')
-    }
-
-    // Create a MutationObserver to watch for class changes on documentElement
-    const observer = new MutationObserver(handleThemeChange)
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class']
-    })
-
-    return () => observer.disconnect()
-  }, [])
+  // Use the OS theme hook for persistence
+  const { osTheme } = useOsTheme()
 
   // Prevent hydration issues
   useEffect(() => {
@@ -226,7 +206,7 @@ export default function IFCDataBrowser() {
   }
 
   return (
-    <div className="flex flex-col h-screen retro-desktop">
+    <div className="flex flex-col min-h-screen retro-desktop">
       <Header
         showOsToggle={currentView === "upload"}
         usePyodide={usePyodideHook}
@@ -234,7 +214,7 @@ export default function IFCDataBrowser() {
         hasProcessedData={!!databaseData}
       />
 
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1">
         {currentView === "upload" && (
           <>
             {/* Hero + Upload Combined */}
@@ -277,7 +257,7 @@ export default function IFCDataBrowser() {
                       <div className="retro-window academic-card" id="upload-window">
                         <div className="retro-titlebar">
                           <WindowsControls
-                            variant={uiTheme}
+                            variant={osTheme}
                             onClose={() => handleWindowAction('upload-window', 'close')}
                             onMinimize={() => handleWindowAction('upload-window', 'minimize')}
                             onMaximize={() => handleWindowAction('upload-window', 'maximize')}
@@ -296,7 +276,7 @@ export default function IFCDataBrowser() {
                       <div className="retro-window academic-card" id="about-window">
                         <div className="retro-titlebar">
                           <WindowsControls
-                            variant={uiTheme}
+                            variant={osTheme}
                             onClose={() => handleWindowAction('about-window', 'close')}
                             onMinimize={() => handleWindowAction('about-window', 'minimize')}
                             onMaximize={() => handleWindowAction('about-window', 'maximize')}
@@ -323,7 +303,7 @@ export default function IFCDataBrowser() {
                       <div className="retro-window academic-card" id="technical-window">
                         <div className="retro-titlebar">
                           <WindowsControls
-                            variant={uiTheme}
+                            variant={osTheme}
                             onClose={() => handleWindowAction('technical-window', 'close')}
                             onMinimize={() => handleWindowAction('technical-window', 'minimize')}
                             onMaximize={() => handleWindowAction('technical-window', 'maximize')}
@@ -409,7 +389,7 @@ export default function IFCDataBrowser() {
                       <div className="retro-window retro-pop" id="architecture-window">
                         <div className="retro-titlebar">
                           <WindowsControls
-                            variant={uiTheme}
+                            variant={osTheme}
                             onClose={() => handleWindowAction('architecture-window', 'close')}
                             onMinimize={() => handleWindowAction('architecture-window', 'minimize')}
                             onMaximize={() => handleWindowAction('architecture-window', 'maximize')}
@@ -449,7 +429,7 @@ export default function IFCDataBrowser() {
                       <div className="retro-window retro-pop" id="resources-window">
                         <div className="retro-titlebar">
                           <WindowsControls
-                            variant={uiTheme}
+                            variant={osTheme}
                             onClose={() => handleWindowAction('resources-window', 'close')}
                             onMinimize={() => handleWindowAction('resources-window', 'minimize')}
                             onMaximize={() => handleWindowAction('resources-window', 'maximize')}
@@ -530,6 +510,8 @@ export default function IFCDataBrowser() {
           <DatabaseViewer data={databaseData} onBackToUpload={handleBackToUpload} fileName={uploadedFile?.name} usePyodide={usePyodideHook} />
         )}
       </main>
+
+      <Footer />
     </div>
   )
 }

@@ -4,6 +4,7 @@ import React from "react"
 import { Button } from "@/components/ui/button"
 import { MoonIcon, SunIcon, MonitorCog, MonitorSmartphone, DownloadIcon } from "lucide-react"
 import { useTheme } from "@/components/theme-provider"
+import { useOsTheme } from "@/components/os-theme-provider"
 
 interface HeaderProps {
   showOsToggle?: boolean
@@ -14,31 +15,13 @@ interface HeaderProps {
 
 export function Header({ showOsToggle = true, usePyodide, fileName, hasProcessedData = false }: HeaderProps) {
   const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = React.useState(false)
-
-  // Prevent hydration mismatch by only rendering after component mounts
-  React.useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent)
-  const [uiTheme, setUiTheme] = React.useState<'mac' | 'xp'>(isMac ? 'xp' : 'mac')
-
-  React.useEffect(() => {
-    if (typeof document === 'undefined') return
-    const root = document.documentElement
-    if (uiTheme === 'xp') {
-      root.classList.add('theme-xp')
-    } else {
-      root.classList.remove('theme-xp')
-    }
-  }, [uiTheme])
+  const { osTheme, setOsTheme, mounted } = useOsTheme()
 
   const handleExportSQLite = async () => {
     if (!usePyodide) return
 
     try {
-      const bytes: Uint8Array = await usePyodide.exportSQLite()
+      const bytes = await usePyodide.exportSQLite()
       const blob = new Blob([bytes], { type: "application/x-sqlite3" })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
@@ -68,8 +51,13 @@ export function Header({ showOsToggle = true, usePyodide, fileName, hasProcessed
 
         <div className="flex items-center gap-1">
           {showOsToggle && mounted && (
-            <Button variant="ghost" size="icon" onClick={() => setUiTheme(uiTheme === 'mac' ? 'xp' : 'mac')} title={uiTheme === 'mac' ? 'Switch to XP' : 'Switch to Mac'}>
-              {uiTheme === 'mac' ? <MonitorSmartphone className="h-4 w-4" /> : <MonitorCog className="h-4 w-4" />}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setOsTheme(osTheme === 'mac' ? 'xp' : 'mac')}
+              title={osTheme === 'mac' ? 'Switch to XP' : 'Switch to Mac'}
+            >
+              {osTheme === 'mac' ? <MonitorSmartphone className="h-4 w-4" /> : <MonitorCog className="h-4 w-4" />}
             </Button>
           )}
           {mounted && (
