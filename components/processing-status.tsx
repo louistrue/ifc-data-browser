@@ -28,7 +28,13 @@ export function ProcessingStatus({
   currentStep = "",
   error = null,
 }: ProcessingStatusProps) {
-  const currentStepIndex = Math.min(Math.floor(progress / 20), processingSteps.length - 1)
+  const getCurrentStepIndex = (progress: number): number => {
+    if (progress === 0) return 0       // Initializing Pyodide (0%)
+    if (progress < 18) return 2        // Parsing IFC File (0-18%)
+    if (progress < 85) return 3        // Converting to SQL (18-85%)
+    return 4                           // Finalizing Database (85-100%)
+  }
+  const currentStepIndex = getCurrentStepIndex(progress)
 
   return (
     <div className="max-w-2xl mx-auto">

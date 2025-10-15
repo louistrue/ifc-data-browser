@@ -21,9 +21,7 @@ export function FileUploadZone({ onFileUpload, disabled = false }: FileUploadZon
 
       if (rejectedFiles.length > 0) {
         const rejection = rejectedFiles[0]
-        if (rejection.errors.some((e: any) => e.code === "file-too-large")) {
-          setError("File is too large. Please upload a file smaller than 100MB.")
-        } else if (rejection.errors.some((e: any) => e.code === "file-invalid-type")) {
+        if (rejection.errors.some((e: any) => e.code === "file-invalid-type")) {
           setError("Invalid file type. Please upload a valid IFC file (.ifc)")
         } else {
           setError("Please upload a valid IFC file (.ifc)")
@@ -47,7 +45,7 @@ export function FileUploadZone({ onFileUpload, disabled = false }: FileUploadZon
       "model/ifc": [".ifc"],
     },
     maxFiles: 1,
-    maxSize: 100 * 1024 * 1024, // 100MB
+    // No size limit - browser memory is the only constraint
     disabled, // Disable dropzone when not ready
   })
 
@@ -99,7 +97,7 @@ export function FileUploadZone({ onFileUpload, disabled = false }: FileUploadZon
                     ? "Loading processing engine"
                     : "Drag & drop or click to browse"}
                 </p>
-                <p className="text-xs text-muted-foreground">Up to 100MB</p>
+                <p className="text-xs text-muted-foreground">No size limit - browser memory only</p>
               </div>
 
               <Button variant="outline" size="sm" className="mt-1 bg-transparent" disabled={disabled}>

@@ -117,7 +117,7 @@ export function SchemaToolbar({
             <div>
                 <h3 className="text-sm font-medium text-foreground">Entity Relationship Graph</h3>
                 <p className="text-xs text-muted-foreground">
-                    Drag tables to refine layout. Your changes are saved automatically.
+                    Drag tables to refine layout.
                 </p>
                 {edgeCount !== filteredEdgeCount && (
                     <p className="text-xs text-muted-foreground">

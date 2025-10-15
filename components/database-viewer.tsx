@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -19,9 +19,28 @@ interface DatabaseViewerProps {
 }
 
 export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc", usePyodide }: DatabaseViewerProps) {
+  const [schemaData, setSchemaData] = useState<any>(null)
   const [selectedTable, setSelectedTable] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("overview")
   const [showAllEntities, setShowAllEntities] = useState(false)
+
+  // Fetch schema data when component mounts
+  useEffect(() => {
+    const fetchSchema = async () => {
+      if (!usePyodide?.isInitialized || !usePyodide.getSchema) {
+        return
+      }
+
+      try {
+        const schema = await usePyodide.getSchema()
+        setSchemaData(schema)
+      } catch (error) {
+        console.error('[DatabaseViewer] Failed to fetch schema:', error)
+      }
+    }
+
+    fetchSchema()
+  }, [usePyodide])
 
   // Data received silently
 
@@ -361,7 +380,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
   // Stats calculated silently
 
   return (
-    <div className="space-y-6 db-view">
+    <div className="space-y-6 db-view h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center space-x-4">
@@ -427,7 +446,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
       )}
 
       {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 flex-1 flex flex-col">
         <TabsList className="db-tabs-list db-tabs-sticky">
           <TabsTrigger className="db-tabs-trigger" value="overview">Overview</TabsTrigger>
           <TabsTrigger className="db-tabs-trigger" value="entities">Entities</TabsTrigger>
@@ -694,7 +713,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
           />
         </TabsContent>
 
-        <TabsContent value="schema" className="space-y-6">
+        <TabsContent value="schema" className="h-full px-6">
           <SchemaTab
             usePyodide={usePyodide}
             fileKey={fileName}
@@ -711,6 +730,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
             specialTables={specialTables}
             psetStats={psetStats}
             usePyodide={usePyodide}
+            schema={schemaData}
           />
         </TabsContent>
       </Tabs>

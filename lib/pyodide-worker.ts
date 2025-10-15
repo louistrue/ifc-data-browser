@@ -3,16 +3,16 @@
 
 export interface PyodideMessage {
   type:
-    | "init"
-    | "process"
-    | "progress"
-    | "complete"
-    | "error"
-    | "execute_query"
-    | "export_sqlite"
-    | "sqlite_export"
-    | "get_schema"
-    | "schema_result"
+  | "init"
+  | "process"
+  | "progress"
+  | "complete"
+  | "error"
+  | "execute_query"
+  | "export_sqlite"
+  | "sqlite_export"
+  | "get_schema"
+  | "schema_result"
   data?: any
   progress?: number
   step?: string
@@ -75,31 +75,44 @@ export const createPyodideWorker = async () => {
 
     async function initializePyodide() {
       try {
+        console.log('[v0] Starting Pyodide initialization...');
         // Starting Pyodide initialization silently
         self.postMessage({ type: 'progress', progress: 5, step: 'Loading Pyodide...' });
         
+        console.log('[v0] Loading Pyodide script...');
         importScripts('https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js');
+        
+        console.log('[v0] Initializing Pyodide runtime...');
         pyodide = await loadPyodide({
           indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.23.4/full/'
         });
+        console.log('[v0] Pyodide runtime loaded successfully');
         
         // Pyodide loaded successfully
         self.postMessage({ type: 'progress', progress: 20, step: 'Installing base packages...' });
         
+        console.log('[v0] Loading base packages (micropip, numpy)...');
         await pyodide.loadPackage(['micropip', 'numpy']);
-        // Base packages loaded silently
+        console.log('[v0] Base packages loaded successfully');
         
         self.postMessage({ type: 'progress', progress: 30, step: 'Installing shapely...' });
+        console.log('[v0] Loading shapely...');
         await pyodide.loadPackage(['shapely']);
+        console.log('[v0] Shapely loaded successfully');
 
         self.postMessage({ type: 'progress', progress: 35, step: 'Installing typing-extensions...' });
+        console.log('[v0] Loading typing-extensions...');
         await pyodide.loadPackage(['typing-extensions']);
+        console.log('[v0] Typing-extensions loaded successfully');
 
         self.postMessage({ type: 'progress', progress: 37, step: 'Installing sqlite3...' });
+        console.log('[v0] Loading sqlite3...');
         await pyodide.loadPackage(['sqlite3']);
+        console.log('[v0] SQLite3 loaded successfully');
         
         self.postMessage({ type: 'progress', progress: 40, step: 'Installing IfcOpenShell...' });
         
+        console.log('[v0] Installing IfcOpenShell and dependencies...');
         await pyodide.runPythonAsync(\`
 import micropip
 
@@ -137,9 +150,11 @@ except Exception as e:
         \`);
         
         // IfcOpenShell installed successfully
+        console.log('[v0] IfcOpenShell installation completed');
         self.postMessage({ type: 'progress', progress: 60, step: 'Loading ifc2sql.py module...' });
         
         // Loading ifc2sql.py module silently
+        console.log('[v0] Loading ifc2sql.py module...');
         
         await pyodide.runPythonAsync(\`
 import ifcopenshell
@@ -164,50 +179,154 @@ def process_ifc_to_sqlite(file_content, filename):
     print(f"Processing IFC file: {filename}")
     print(f"File size: {len(file_content)} bytes")
     
+    # Progress callback is already defined globally
+    
     try:
-        # Write file content to temporary file
-        temp_ifc_path = '/tmp/model.ifc'
-        with open(temp_ifc_path, 'wb') as f:
-            f.write(bytes(file_content))
-        print(f"IFC file written to: {temp_ifc_path}")
+        # Phase 1: File loading (0-9%)
+        progress_callback(5, "Reading and validating IFC structure...")
+        print(f"[PROGRESS] Phase 1: Loading {len(file_content)} bytes into memory")
         
-        # Open IFC file with IfcOpenShell
-        print("Opening IFC file with IfcOpenShell...")
-        ifc_file = ifcopenshell.open(temp_ifc_path)
-        print("IFC file opened successfully")
-        print(f"Schema: {ifc_file.schema}")
+        # Phase 2: IFC parsing (9-18%)
+        progress_callback(9, "Reading and validating IFC structure...")
+        print("[PROGRESS] Phase 2: Starting IFC parsing with IfcOpenShell")
+        
+        # Smart loading strategy: file writing is faster for large files!
+        file_size_mb = len(file_content) / (1024 * 1024)
+        print(f"[PROGRESS] File size: {file_size_mb:.1f}MB")
+        
+        # For large files (>10MB), file writing is actually faster than string conversion
+        # For small files (<10MB), try direct string loading
+        if file_size_mb > 10:
+            print(f"[PROGRESS] Large file detected ({file_size_mb:.1f}MB) - using optimized file method")
+            progress_callback(11, f"Processing large file ({int(file_size_mb)}MB)...")
+            
+            # Write to file - faster for large files
+            temp_ifc_path = '/tmp/model.ifc'
+            with open(temp_ifc_path, 'wb') as f:
+                f.write(bytes(file_content))
+            print(f"[PROGRESS] File written to: {temp_ifc_path}")
+            
+            progress_callback(14, "Opening IFC file...")
+            ifc_file = ifcopenshell.open(temp_ifc_path)
+            print(f"[PROGRESS] IFC loaded from file")
+            
+        else:
+            print(f"[PROGRESS] Small file ({file_size_mb:.1f}MB) - trying direct buffer loading")
+            
+            # Try direct string loading for small files
+            try:
+                file_data = bytes(file_content).decode('iso-8859-1')
+                print(f"[PROGRESS] Text IFC detected: {len(file_data)} characters")
+                
+                ifc_file = ifcopenshell.file.from_string(file_data)
+                print("[PROGRESS] IFC loaded directly from buffer - SUCCESS!")
+                
+            except Exception as e:
+                error_msg = str(e)
+                print(f"[PROGRESS] Direct loading failed: {error_msg}")
+                
+                # Check for specific schema errors
+                if 'IFC4X3' in error_msg or 'schema' in error_msg.lower():
+                    print(f"[WARNING] Schema compatibility issue: {error_msg}")
+                    print("[WARNING] Falling back to file method for better compatibility")
+                
+                # Fallback: Write to file
+                temp_ifc_path = '/tmp/model.ifc'
+                with open(temp_ifc_path, 'wb') as f:
+                    f.write(bytes(file_content))
+                ifc_file = ifcopenshell.open(temp_ifc_path)
+                print(f"[PROGRESS] IFC loaded from file")
+        print("[PROGRESS] IFC file opened successfully")
+        print(f"[PROGRESS] Schema: {ifc_file.schema}")
+        
+        # Check for unsupported schema versions
+        schema_name = ifc_file.schema
+        if 'IFC4X3' in schema_name:
+            print(f"[WARNING] IFC4X3 schema detected: {schema_name}")
+            print("[WARNING] IFC4X3 support is experimental and may cause errors")
+            print("[WARNING] Consider using IFC4 or IFC2X3 for better compatibility")
+        
+        # Skip expensive entity counting - we don't need it
+        print("[PROGRESS] IFC file loaded successfully")
         
         sqlite_db_path = '/tmp/model.db'
         
-        print("Creating SQLite database using official ifc2sql.py Patcher...")
+        # Phase 3: Database creation (18-28%)
+        progress_callback(18, "Transforming data to database format...")
+        print("[PROGRESS] Phase 3: Starting SQLite database creation")
         
         # Remove existing database if present
         if os.path.exists(sqlite_db_path):
             os.remove(sqlite_db_path)
+            print(f"[PROGRESS] Removed existing database: {sqlite_db_path}")
         
         # Create the official Patcher instance with comprehensive options
-        patcher = Patcher(
-            file=ifc_file,
-            sql_type="SQLite",
-            database=sqlite_db_path,
-            full_schema=False,  # Only create tables for classes in the dataset
-            is_strict=False,    # Don't enforce strict null constraints
-            should_expand=False,  # Keep ifc_id as primary key
-            should_get_inverses=True,   # Get inverse relationships
-            should_get_psets=True,      # Get property sets
-            should_get_geometry=False,   # Skip geometry for browser performance
-            should_skip_geometry_data=True  # Skip geometry representation tables
-        )
+        print("[PROGRESS] Creating Patcher instance...")
+        try:
+            patcher = Patcher(
+                file=ifc_file,
+                sql_type="SQLite",
+                database=sqlite_db_path,
+                full_schema=False,  # Only create tables for classes in the dataset
+                is_strict=False,    # Don't enforce strict null constraints
+                should_expand=False,  # Keep ifc_id as primary key
+                should_get_inverses=True,   # Get inverse relationships
+                should_get_psets=True,      # Get property sets
+                should_get_geometry=False,   # Skip geometry for browser performance
+                should_skip_geometry_data=True  # Skip geometry representation tables
+            )
+        except Exception as patcher_error:
+            error_msg = str(patcher_error)
+            if 'IFC4X3' in error_msg or 'schema' in error_msg.lower():
+                print(f"[ERROR] Schema compatibility issue: {error_msg}")
+                print("[ERROR] This IFC file uses a schema version that may not be fully supported")
+                print("[ERROR] Please try converting the file to IFC4 or IFC2X3 format")
+                print("[ERROR] Alternatively, try using a different IFC processing tool")
+                raise Exception(f"Unsupported IFC schema '{schema_name}'. Error: {error_msg}")
+            else:
+                print(f"[ERROR] Patcher creation failed: {error_msg}")
+                raise patcher_error
         
-        print("Executing official ifc2sql patch...")
+        print("[PROGRESS] Executing official ifc2sql patch...")
+        
+        # Add progress updates during patcher.patch() - this is the slowest part
+        import time
+        start_time = time.time()
+        
+        # Estimate file size for progress messages
+        file_size_mb = len(file_content) / (1024 * 1024)
+        
+        # Start patch in background and report progress
+        progress_callback(20, "Transforming data to database format...")
+        print("[PROGRESS] Starting patch operation...")
+        
+        # For very large files, provide periodic updates
+        if file_size_mb > 50:
+            progress_callback(22, f"Transforming data to database format...")
+            print(f"[PROGRESS] Large file detected: {int(file_size_mb)}MB")
+        
+        # Execute the patch operation
+        print("[PROGRESS] Executing patcher.patch() - this is the slowest operation")
         patcher.patch()
         
+        patch_time = time.time() - start_time
+        print(f"[PROGRESS] Patch completed in {patch_time:.1f} seconds")
+        
+        if patch_time > 60:
+            print(f"[PROGRESS] Long processing time: {patch_time:.1f}s for {int(file_size_mb)}MB file")
+        
         output_path = patcher.get_output()
-        print(f"SQLite database created at: {output_path}")
+        print(f"[PROGRESS] SQLite database created at: {output_path}")
+        
+        progress_callback(28, "Transforming data to database format...")
+        print("[PROGRESS] Phase 3 complete: Database created successfully")
         
         print("Opening SQLite database with ifcopenshell.sql.sqlite...")
         db = ifcopenshell.sql.sqlite(output_path)
         print(f"Database opened successfully. Schema: {db.schema}")
+        
+        # Phase 4: Entity extraction (28-66%)
+        progress_callback(28, "Transforming data to database format...")
         
         # Extract entity information from major types only for performance
         print("Extracting key entity information...")
@@ -220,65 +339,58 @@ def process_ifc_to_sqlite(file_content, filename):
         available_types = [row[0] for row in cursor.fetchall()]
 
         # Process major architectural/building elements, materials, quantities, and classifications
-        major_types = [
+        # Pre-compile as set for O(1) lookup performance
+        major_types = {
             'IfcBuilding', 'IfcBuildingStorey', 'IfcWall', 'IfcSlab', 'IfcColumn', 'IfcBeam', 'IfcDoor', 'IfcWindow', 'IfcFurniture', 'IfcSpace',
             'IfcMaterial', 'IfcMaterialConstituent', 'IfcMaterialConstituentSet', 'IfcMaterialLayer', 'IfcMaterialLayerSet',
             'IfcQuantityLength', 'IfcQuantityVolume', 'IfcQuantityArea', 'IfcQuantityCount', 'IfcQuantityWeight', 'IfcPhysicalComplexQuantity',
             'IfcClassification', 'IfcClassificationReference', 'IfcRelAssociatesMaterial', 'IfcMaterialDefinition'
-        ]
+        }
         types_to_process = [t for t in available_types if t in major_types]
 
         print(f"Processing {len(types_to_process)} major entity types")
+        
+        # Pre-compile common attributes list for performance
+        common_attrs = ['ObjectType', 'Tag', 'PredefinedType', 'Description', 'LongName']
 
-        # Process each major entity type
-        for ifc_type in types_to_process:
+        # Process each major entity type with progress reporting
+        for type_idx, ifc_type in enumerate(types_to_process):
             try:
                 elements = db.by_type(ifc_type)
                 if elements:
                     entities[ifc_type] = []
-                    limit = len(elements)
+                    total_elements = len(elements)
                     
-                    for element in elements[:limit]:
-                        try:
-                            # Use get_info() to get ALL attributes, with robust error handling
+                    # Report progress for this entity type
+                    progress_percent = 28 + (38 * type_idx / len(types_to_process))
+                    progress_callback(progress_percent, "Transforming data to database format...")
+                    print(f"[PROGRESS] Entity extraction: {progress_percent:.1f}% - Processing {ifc_type}")
+                    
+                    # Process elements in batches for progress updates
+                    batch_size = 50
+                    for batch_start in range(0, total_elements, batch_size):
+                        batch_end = min(batch_start + batch_size, total_elements)
+                        batch_elements = elements[batch_start:batch_end]
+                        
+                        for element in batch_elements:
                             try:
-                                # Try get_info() first - this is the standard way to get all attributes
-                                # Use recursive=True and scalar_only=False to resolve "Empty Object" references
-                                entity_info = element.get_info(recursive=True, scalar_only=False)
-
-                                # Ensure essential fields are present (get_info() might miss some)
-                                entity_info.update({
-                                    'id': element.id(),
-                                    'Type': element.is_a(),
-                                    'Name': getattr(element, 'Name', None) or str(element.id())
-                                })
-
-                                # Add GlobalId if not present
-                                if 'GlobalId' not in entity_info:
-                                    entity_info['GlobalId'] = getattr(element, 'GlobalId', None)
-
-                                # Add other common IFC attributes that might be missing
-                                common_attrs = ['ObjectType', 'Tag', 'PredefinedType', 'Description', 'LongName']
-                                for attr_name in common_attrs:
-                                    if attr_name not in entity_info and hasattr(element, attr_name):
-                                        try:
-                                            attr_value = getattr(element, attr_name)
-                                            if attr_value is not None:
-                                                entity_info[attr_name] = attr_value
-                                        except:
-                                            pass
-
-                            except Exception as get_info_error:
-                                # get_info() failed, use fallback approach
+                                # Optimized: Use direct attribute access instead of get_info() for speed
+                                # Cache element properties to avoid repeated calls
+                                element_id = element.id()
+                                element_type = element.is_a()
+                                
+                                # Start with essential fields using direct access
                                 entity_info = {
-                                    'id': element.id(),
-                                    'Type': element.is_a(),
-                                    'Name': getattr(element, 'Name', None) or str(element.id()),
-                                    'GlobalId': getattr(element, 'GlobalId', None)
+                                    'id': element_id,
+                                    'Type': element_type,
+                                    'Name': getattr(element, 'Name', None) or str(element_id)
                                 }
 
-                                # Add common attributes even in fallback
-                                common_attrs = ['ObjectType', 'Tag', 'PredefinedType', 'Description', 'LongName']
+                                # Add GlobalId if available
+                                if hasattr(element, 'GlobalId'):
+                                    entity_info['GlobalId'] = element.GlobalId
+
+                                # Add common attributes efficiently
                                 for attr_name in common_attrs:
                                     if hasattr(element, attr_name):
                                         try:
@@ -288,149 +400,91 @@ def process_ifc_to_sqlite(file_content, filename):
                                         except:
                                             pass
 
-                            # Now enhance with direct attribute access for any missing data
-                            try:
-                                attr_count = element.attribute_count()
+                                # Enhanced processing for complex IFC relationships (optimized)
+                                try:
+                                    attr_count = element.attribute_count()
+                                    
+                                    # Process only critical attributes for performance
+                                    critical_attrs = ['ObjectPlacement', 'Representation', 'OwnerHistory']
+                                    
+                                    for i in range(attr_count):
+                                        try:
+                                            attr = element.attribute_by_index(i)
+                                            attr_name = attr.name()
 
-                                # Get all attribute names to ensure we don't miss any
-                                all_attr_names = set()
-                                for i in range(attr_count):
-                                    try:
-                                        attr = element.attribute_by_index(i)
-                                        attr_name = attr.name()
-                                        all_attr_names.add(attr_name)
-                                    except:
-                                        continue
-
-                                # Ensure all attributes are represented using proper IFC access
-                                for i in range(attr_count):
-                                    try:
-                                        attr = element.attribute_by_index(i)
-                                        attr_name = attr.name()
-
-                                        # Skip if we already have this attribute from get_info()
-                                        if attr_name in entity_info and entity_info[attr_name] is not None:
+                                            # Only process critical attributes to avoid slowdown
+                                            if attr_name in critical_attrs:
+                                                raw_value = element[i]
+                                                if raw_value is not None and hasattr(raw_value, 'id') and hasattr(raw_value, 'is_a'):
+                                                    # Simplified entity reference for performance
+                                                    entity_ref = {
+                                                        'id': raw_value.id(),
+                                                        'type': raw_value.is_a(),
+                                                        'name': getattr(raw_value, 'Name', None) or str(raw_value.id())
+                                                    }
+                                                    entity_info[attr_name] = entity_ref
+                                        except:
                                             continue
 
-                                        # Use proper IFC attribute access
-                                        raw_value = element[i]
-                                        if raw_value is not None:
-                                            entity_info[attr_name] = raw_value
-                                            print(f"Added missing attribute {attr_name}: {type(raw_value)}")
-                                    except Exception as attr_access_error:
-                                        print(f"Attribute access failed for index {i}: {attr_access_error}")
-                                        continue
+                                except Exception as extraction_error:
+                                    # Continue processing even if attribute extraction fails
+                                    pass
 
-                                print(f"After attribute access, entity_info keys: {list(entity_info.keys())}")
+                                # Add specific quantity values for better display (optimized)
+                                if element_type.startswith('IfcQuantity'):
+                                    quantity_attrs = ['LengthValue', 'AreaValue', 'VolumeValue', 'CountValue', 'WeightValue']
+                                    for qty_attr in quantity_attrs:
+                                        if hasattr(element, qty_attr):
+                                            value = getattr(element, qty_attr)
+                                            if value is not None:
+                                                entity_info[qty_attr] = value
 
-                                # Enhanced processing for complex IFC relationships
-                                for i in range(attr_count):
-                                    try:
-                                        attr = element.attribute_by_index(i)
-                                        attr_name = attr.name()
+                                # Add material-specific attributes (optimized)
+                                if element_type.startswith('IfcMaterial'):
+                                    material_attrs = ['Category', 'Description', 'Name']
+                                    for mat_attr in material_attrs:
+                                        if hasattr(element, mat_attr):
+                                            value = getattr(element, mat_attr)
+                                            if value is not None:
+                                                entity_info[mat_attr if mat_attr != 'Name' else 'MaterialName'] = value
+                                    entity_info['MaterialType'] = element_type
 
-                                        if attr_name in ['ObjectPlacement', 'Representation', 'OwnerHistory']:
-                                            raw_value = element[i]
-                                            if raw_value is not None and hasattr(raw_value, 'id') and hasattr(raw_value, 'is_a'):
-                                                # Enhanced entity reference with additional details
-                                                entity_ref = {
-                                                    'id': raw_value.id(),
-                                                    'type': raw_value.is_a(),
-                                                    'name': getattr(raw_value, 'Name', None) or str(raw_value.id())
-                                                }
+                                # Add material layer attributes (optimized)
+                                if element_type.startswith('IfcMaterialLayer'):
+                                    layer_attrs = ['LayerThickness', 'Material']
+                                    for layer_attr in layer_attrs:
+                                        if hasattr(element, layer_attr):
+                                            value = getattr(element, layer_attr)
+                                            if value is not None:
+                                                entity_info[layer_attr] = value
+                                    entity_info['LayerType'] = element_type
 
-                                                # Add specific details for common IFC objects
-                                                if attr_name == 'ObjectPlacement':
-                                                    try:
-                                                        if hasattr(raw_value, 'RelativePlacement'):
-                                                            rel_placement = raw_value.RelativePlacement
-                                                            if hasattr(rel_placement, 'Location'):
-                                                                location = rel_placement.Location
-                                                                if hasattr(location, 'Coordinates'):
-                                                                    coords = location.Coordinates
-                                                                    if hasattr(coords, '__len__') and len(coords) >= 3:
-                                                                        entity_ref['coordinates'] = [float(coords[0]), float(coords[1]), float(coords[2])]
-                                                    except:
-                                                        pass
+                                # Add material relationship attributes (optimized)
+                                if element_type.startswith('IfcRelAssociatesMaterial'):
+                                    if hasattr(element, 'RelatingMaterial'):
+                                        entity_info['RelatingMaterial'] = element.RelatingMaterial
+                                    entity_info['RelationshipType'] = element_type
 
-                                                elif attr_name == 'Representation':
-                                                    try:
-                                                        if hasattr(raw_value, 'Representations'):
-                                                            reps = raw_value.Representations
-                                                            entity_ref['representation_count'] = len(reps) if hasattr(reps, '__len__') else 0
-                                                    except:
-                                                        pass
-
-                                                elif attr_name == 'OwnerHistory':
-                                                    try:
-                                                        if hasattr(raw_value, 'OwningUser'):
-                                                            user = raw_value.OwningUser
-                                                            if hasattr(user, 'ThePerson'):
-                                                                person = user.ThePerson
-                                                                if hasattr(person, 'GivenName'):
-                                                                    entity_ref['user'] = f"{getattr(person, 'GivenName', '')} {getattr(person, 'FamilyName', '')}".strip()
-                                                    except:
-                                                        pass
-
-                                                entity_info[attr_name] = entity_ref
-
-                                    except:
-                                        continue
-
-                            except Exception as extraction_error:
-                                # Keep the entity_info we got from get_info(), don't lose data
-                                pass
-
-                            # Add specific quantity values for better display
-                            if element.is_a().startswith('IfcQuantity'):
-                                if hasattr(element, 'LengthValue') and element.LengthValue is not None:
-                                    entity_info['LengthValue'] = element.LengthValue
-                                if hasattr(element, 'AreaValue') and element.AreaValue is not None:
-                                    entity_info['AreaValue'] = element.AreaValue
-                                if hasattr(element, 'VolumeValue') and element.VolumeValue is not None:
-                                    entity_info['VolumeValue'] = element.VolumeValue
-                                if hasattr(element, 'CountValue') and element.CountValue is not None:
-                                    entity_info['CountValue'] = element.CountValue
-                                if hasattr(element, 'WeightValue') and element.WeightValue is not None:
-                                    entity_info['WeightValue'] = element.WeightValue
-
-                            # Add material-specific attributes
-                            if element.is_a().startswith('IfcMaterial'):
-                                if hasattr(element, 'Category'):
-                                    entity_info['Category'] = element.Category
-                                if hasattr(element, 'Description'):
-                                    entity_info['Description'] = element.Description
-                                if hasattr(element, 'Name'):
-                                    entity_info['MaterialName'] = element.Name
-                                entity_info['MaterialType'] = element.is_a()
-
-                            # Add material layer attributes
-                            if element.is_a().startswith('IfcMaterialLayer'):
-                                if hasattr(element, 'LayerThickness'):
-                                    entity_info['LayerThickness'] = element.LayerThickness
-                                if hasattr(element, 'Material'):
-                                    entity_info['Material'] = element.Material
-                                entity_info['LayerType'] = element.is_a()
-
-                            # Add material relationship attributes
-                            if element.is_a().startswith('IfcRelAssociatesMaterial'):
-                                if hasattr(element, 'RelatingMaterial'):
-                                    entity_info['RelatingMaterial'] = element.RelatingMaterial
-                                entity_info['RelationshipType'] = element.is_a()
-
-                            # Processing complete for this entity
-
-                            entities[ifc_type].append(entity_info)
-                            total_entities += 1
-                        except Exception as entity_error:
-                            print(f"Failed to process entity {ifc_type}: {entity_error}")
-                            # Skip problematic entities silently for performance
-                            continue
+                                # Processing complete for this entity
+                                entities[ifc_type].append(entity_info)
+                                total_entities += 1
+                                
+                            except Exception as entity_error:
+                                # Skip problematic entities silently for performance
+                                continue
+                        
+                        # Report progress after each batch
+                        if batch_start + batch_size < total_elements:
+                            batch_progress = 28 + (38 * (type_idx + (batch_start + batch_size) / total_elements) / len(types_to_process))
+                            progress_callback(batch_progress, "Transforming data to database format...")
                     
             except Exception as e:
                 print(f"Error processing {ifc_type}: {e}")
         
-        # Get property sets data - simplified for performance
+        # Phase 5: Property extraction (66-85%)
+        progress_callback(66, "Transforming data to database format...")
+        
+        # Get property sets data - optimized for performance
         print("Extracting key properties...")
         cursor.execute("SELECT COUNT(*) FROM psets")
         total_pset_count = cursor.fetchone()[0]
@@ -445,17 +499,45 @@ def process_ifc_to_sqlite(file_content, filename):
         # Process in batches to avoid SQLite parameter limit
         pset_data = []
         if major_type_ids:
-            batch_size = 500  # SQLite limit is around 999 parameters
+            batch_size = 999  # Use max SQLite parameter limit for better performance
             ids_list = list(major_type_ids)
+            total_batches = (len(ids_list) + batch_size - 1) // batch_size
+            
             for i in range(0, len(ids_list), batch_size):
                 batch_ids = ids_list[i:i + batch_size]
                 placeholders = ','.join('?' * len(batch_ids))
                 cursor.execute(f"SELECT ifc_id, pset_name, name, value FROM psets WHERE ifc_id IN ({placeholders}) ORDER BY ifc_id", batch_ids)
                 pset_data.extend(cursor.fetchall())
+                
+                # Report progress every batch
+                batch_num = i // batch_size + 1
+                progress_percent = 66 + (19 * batch_num / total_batches)
+                progress_callback(progress_percent, "Transforming data to database format...")
 
-        # Enhanced property extraction with metadata
+        # Enhanced property extraction with metadata (optimized)
         properties = []
-        for entity_id, pset_name, prop_name, prop_value in pset_data:
+        
+        # Pre-compile keyword sets for faster lookup
+        length_keywords = {'LENGTH', 'WIDTH', 'HEIGHT', 'DEPTH', 'THICKNESS', 'DIAMETER'}
+        area_keywords = {'AREA', 'SURFACE'}
+        volume_keywords = {'VOLUME', 'CAPACITY'}
+        mass_keywords = {'MASS', 'WEIGHT'}
+        cost_keywords = {'COST', 'PRICE', 'VALUE'}
+        count_keywords = {'COUNT', 'QUANTITY', 'NUMBER'}
+        force_keywords = {'LOAD', 'FORCE', 'STRESS'}
+        material_keywords = {'MATERIAL', 'FINISH', 'COLOR', 'TYPE'}
+        code_keywords = {'CODE', 'STANDARD', 'SPECIFICATION'}
+        name_keywords = {'NAME', 'DESCRIPTION', 'LABEL'}
+        
+        # Process properties in batches for progress reporting
+        prop_batch_size = 500  # Increased frequency for better feedback
+        for prop_idx, (entity_id, pset_name, prop_name, prop_value) in enumerate(pset_data):
+            # Report progress every 500 properties
+            if prop_idx % prop_batch_size == 0:
+                progress_percent = 80 + (5 * prop_idx / len(pset_data))
+                progress_callback(progress_percent, "Transforming data to database format...")
+                print(f"[PROGRESS] Property extraction: {progress_percent:.1f}% - {prop_idx}/{len(pset_data)} properties")
+            
             property_info = {
                 'entity_id': entity_id,
                 'pset_name': pset_name,
@@ -466,72 +548,53 @@ def process_ifc_to_sqlite(file_content, filename):
                 'category': 'Property'
             }
 
-            # Determine property type and unit based on name and value
+            # Optimized property type determination using pre-compiled sets
+            prop_name_upper = prop_name.upper()
+            
             if isinstance(prop_value, (int, float)):
-                if any(keyword in prop_name.upper() for keyword in ['LENGTH', 'WIDTH', 'HEIGHT', 'DEPTH', 'THICKNESS', 'DIAMETER']):
-                    property_info['property_type'] = 'Length'
-                    property_info['unit'] = 'mm'
-                    property_info['category'] = 'Dimension'
-                elif any(keyword in prop_name.upper() for keyword in ['AREA', 'SURFACE']):
-                    property_info['property_type'] = 'Area'
-                    property_info['unit'] = 'm²'
-                    property_info['category'] = 'Dimension'
-                elif any(keyword in prop_name.upper() for keyword in ['VOLUME', 'CAPACITY']):
-                    property_info['property_type'] = 'Volume'
-                    property_info['unit'] = 'm³'
-                    property_info['category'] = 'Dimension'
-                elif any(keyword in prop_name.upper() for keyword in ['MASS', 'WEIGHT']):
-                    property_info['property_type'] = 'Mass'
-                    property_info['unit'] = 'kg'
-                    property_info['category'] = 'Physical'
-                elif any(keyword in prop_name.upper() for keyword in ['COST', 'PRICE', 'VALUE']):
-                    property_info['property_type'] = 'Cost'
-                    property_info['unit'] = 'EUR'
-                    property_info['category'] = 'Economic'
-                elif any(keyword in prop_name.upper() for keyword in ['COUNT', 'QUANTITY', 'NUMBER']):
-                    property_info['property_type'] = 'Count'
-                    property_info['unit'] = 'pcs'
-                    property_info['category'] = 'Quantity'
-                elif any(keyword in prop_name.upper() for keyword in ['LOAD', 'FORCE', 'STRESS']):
-                    property_info['property_type'] = 'Force'
-                    property_info['unit'] = 'kN'
-                    property_info['category'] = 'Structural'
+                if any(keyword in prop_name_upper for keyword in length_keywords):
+                    property_info.update({'property_type': 'Length', 'unit': 'mm', 'category': 'Dimension'})
+                elif any(keyword in prop_name_upper for keyword in area_keywords):
+                    property_info.update({'property_type': 'Area', 'unit': 'm²', 'category': 'Dimension'})
+                elif any(keyword in prop_name_upper for keyword in volume_keywords):
+                    property_info.update({'property_type': 'Volume', 'unit': 'm³', 'category': 'Dimension'})
+                elif any(keyword in prop_name_upper for keyword in mass_keywords):
+                    property_info.update({'property_type': 'Mass', 'unit': 'kg', 'category': 'Physical'})
+                elif any(keyword in prop_name_upper for keyword in cost_keywords):
+                    property_info.update({'property_type': 'Cost', 'unit': 'EUR', 'category': 'Economic'})
+                elif any(keyword in prop_name_upper for keyword in count_keywords):
+                    property_info.update({'property_type': 'Count', 'unit': 'pcs', 'category': 'Quantity'})
+                elif any(keyword in prop_name_upper for keyword in force_keywords):
+                    property_info.update({'property_type': 'Force', 'unit': 'kN', 'category': 'Structural'})
                 else:
-                    property_info['property_type'] = 'Numeric'
-                    property_info['category'] = 'General'
+                    property_info.update({'property_type': 'Numeric', 'category': 'General'})
 
             elif isinstance(prop_value, str):
                 if prop_value.startswith('#'):
-                    property_info['property_type'] = 'Entity Reference'
-                    property_info['category'] = 'Reference'
-                elif any(keyword in prop_name.upper() for keyword in ['MATERIAL', 'FINISH', 'COLOR', 'TYPE']):
-                    property_info['property_type'] = 'Material'
-                    property_info['category'] = 'Material'
-                elif any(keyword in prop_name.upper() for keyword in ['CODE', 'STANDARD', 'SPECIFICATION']):
-                    property_info['property_type'] = 'Code'
-                    property_info['category'] = 'Specification'
-                elif any(keyword in prop_name.upper() for keyword in ['NAME', 'DESCRIPTION', 'LABEL']):
-                    property_info['property_type'] = 'Text'
-                    property_info['category'] = 'Identification'
+                    property_info.update({'property_type': 'Entity Reference', 'category': 'Reference'})
+                elif any(keyword in prop_name_upper for keyword in material_keywords):
+                    property_info.update({'property_type': 'Material', 'category': 'Material'})
+                elif any(keyword in prop_name_upper for keyword in code_keywords):
+                    property_info.update({'property_type': 'Code', 'category': 'Specification'})
+                elif any(keyword in prop_name_upper for keyword in name_keywords):
+                    property_info.update({'property_type': 'Text', 'category': 'Identification'})
                 else:
-                    property_info['property_type'] = 'Text'
-                    property_info['category'] = 'General'
+                    property_info.update({'property_type': 'Text', 'category': 'General'})
 
             elif isinstance(prop_value, bool):
-                property_info['property_type'] = 'Boolean'
-                property_info['category'] = 'Condition'
+                property_info.update({'property_type': 'Boolean', 'category': 'Condition'})
             else:
-                property_info['property_type'] = 'Complex'
-                property_info['category'] = 'Complex'
+                property_info.update({'property_type': 'Complex', 'category': 'Complex'})
 
-            # Add property set category based on name
-            if 'QTO_' in pset_name.upper() or 'QUANTITY' in pset_name.upper():
+            # Add property set category based on name (optimized)
+            pset_name_upper = pset_name.upper()
+            if 'QTO_' in pset_name_upper or 'QUANTITY' in pset_name_upper:
                 property_info['pset_category'] = 'Quantity'
-            elif 'PSET_' in pset_name.upper():
+            elif 'PSET_' in pset_name_upper:
                 property_info['pset_category'] = 'Property Set'
-            elif any(keyword in pset_name.upper() for keyword in ['MATERIAL', 'FINISH', 'COLOR']):
+            elif any(keyword in pset_name_upper for keyword in ['MATERIAL', 'FINISH', 'COLOR']):
                 property_info['pset_category'] = 'Material'
-            elif any(keyword in pset_name.upper() for keyword in ['STRUCTURAL', 'LOAD', 'FORCE']):
+            elif any(keyword in pset_name_upper for keyword in ['STRUCTURAL', 'LOAD', 'FORCE']):
                 property_info['pset_category'] = 'Structural'
             else:
                 property_info['pset_category'] = 'General'
@@ -540,6 +603,13 @@ def process_ifc_to_sqlite(file_content, filename):
 
         print(f"Extracted {len(properties)} key properties (from {total_pset_count} total)")
         
+        # Phase 6: Data serialization (85-95%)
+        progress_callback(85, "Optimizing queries and indexing...")
+        
+        # Trigger Python garbage collection to free memory
+        import gc
+        gc.collect()
+        
         # Prepare result
         result = {
             'tables': list(entities.keys()),
@@ -547,14 +617,18 @@ def process_ifc_to_sqlite(file_content, filename):
             'schema': ifc_file.schema,
             'entities': entities,
             'properties': properties,
-            'processingMethod': 'Official ifc2sql.py Patcher with ifcopenshell.sql.sqlite',
+            'processingMethod': 'Official ifc2sql.py Patcher with ifcopenshell.sql.sqlite (Optimized)',
             'fileName': filename
         }
         
-        print("Processing completed successfully using official ifc2sql.py")
+        progress_callback(90, "Optimizing queries and indexing...")
+        
+        print("Processing completed successfully using optimized ifc2sql.py")
         print(f"Total entities processed: {total_entities}")
         print(f"Entity types found: {len(entities)}")
         print(f"Properties extracted: {len(properties)}")
+        
+        progress_callback(95, "Optimizing queries and indexing...")
         
         return result
         
@@ -568,6 +642,7 @@ print("IFC processing environment initialized with official ifc2sql.py")
         \`);
         
         // Official ifc2sql.py environment initialized successfully
+        console.log('[v0] IFC processing environment initialized successfully');
         self.postMessage({ type: 'progress', progress: 100, step: 'Ready for processing' });
         self.postMessage({ type: 'init', data: { ready: true } });
         
@@ -585,18 +660,59 @@ print("IFC processing environment initialized with official ifc2sql.py")
 
     async function processIfcFile(fileBuffer, fileName) {
       try {
-        // Processing file: ' + fileName + ' silently
-        self.postMessage({ type: 'progress', progress: 60, step: 'Processing with official ifc2sql.py' });
-        
         // Convert ArrayBuffer to bytes for Python
         const uint8Array = new Uint8Array(fileBuffer);
         pyodide.globals.set('file_content', uint8Array);
         pyodide.globals.set('file_name', fileName);
         
-        self.postMessage({ type: 'progress', progress: 80, step: 'Converting to SQLite using official Patcher' });
+        // Create progress callback for Python using JavaScript function
+        const sendProgress = (percent, message) => {
+          self.postMessage({ 
+            type: 'progress', 
+            progress: percent, 
+            step: message 
+          });
+        };
+        pyodide.globals.set('send_progress_js', sendProgress);
         
-        // Execute the processing function
         await pyodide.runPythonAsync(\`
+# Create a callback function that calls the JavaScript function
+def progress_callback(percent, message):
+    """Send progress updates to JavaScript"""
+    send_progress_js(percent, message)
+
+print("[DEBUG] Progress callback initialized")
+        \`);
+        
+        // Execute the processing function with progress reporting
+        // Add a heartbeat to keep UI responsive during long operations
+        let heartbeatInterval = null;
+        let lastProgressTime = Date.now();
+        
+        // Start heartbeat to detect if processing is stuck
+        heartbeatInterval = setInterval(() => {
+          const timeSinceLastProgress = Date.now() - lastProgressTime;
+          if (timeSinceLastProgress > 10000) { // 10 seconds without progress
+            console.log('[HEARTBEAT] Processing still active, no progress updates for', Math.round(timeSinceLastProgress/1000), 'seconds');
+            // Send a heartbeat message to keep UI responsive
+            self.postMessage({ 
+              type: 'progress', 
+              progress: 25, 
+              step: 'Processing large file - please wait...' 
+            });
+          }
+        }, 5000); // Check every 5 seconds
+        
+        // Override progress callback to track last update time
+        const originalSendProgress = sendProgress;
+        const trackedSendProgress = (percent, message) => {
+          lastProgressTime = Date.now();
+          originalSendProgress(percent, message);
+        };
+        pyodide.globals.set('send_progress_js', trackedSendProgress);
+        
+        try {
+          await pyodide.runPythonAsync(\`
 print("[DEBUG] About to call process_ifc_to_sqlite with official ifc2sql.py...")
 processing_result = process_ifc_to_sqlite(file_content, file_name)
 print("[DEBUG] Official ifc2sql.py processing completed successfully")
@@ -604,16 +720,25 @@ print("[DEBUG] Official ifc2sql.py processing completed successfully")
 global sqlite_db_path
 sqlite_db_path = '/tmp/model.db'
 print(f"[DEBUG] SQLite database path set to: {sqlite_db_path}")
-        \`);
+          \`);
+        } finally {
+          // Clean up heartbeat
+          if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+          }
+        }
         
         sqliteDbPath = '/tmp/model.db';
         
-        // Get the result from Python
+        // Get the result from Python (Python completed at 95%)
         const result = pyodide.globals.get('processing_result');
         
         if (!result) {
           throw new Error('No result returned from Python processing');
         }
+        
+        // Phase 7: JavaScript finalization (95-100%)
+        self.postMessage({ type: 'progress', progress: 96, step: 'Optimizing queries and indexing...' });
         
         let jsResult;
         try {
@@ -641,6 +766,10 @@ print(f"[DEBUG] SQLite database path set to: {sqlite_db_path}")
             if (obj.constructor && obj.constructor.name === 'PyProxy') {
               try {
                 const converted = obj.toJs ? obj.toJs({ dict_converter: Object.fromEntries }) : String(obj);
+                // Explicitly destroy PyProxy to free memory
+                if (obj.destroy) {
+                  obj.destroy();
+                }
                 return convertPyProxyToJS(converted, depth + 1);
               } catch (e) {
                 console.error('[v0] Error converting PyProxy:', e);
@@ -656,29 +785,41 @@ print(f"[DEBUG] SQLite database path set to: {sqlite_db_path}")
             // Handle regular objects - preserve all properties
             const result = {};
             for (const [key, value] of Object.entries(obj)) {
-              // Special handling for complex IFC objects
-              // (logging removed to reduce console spam)
               result[key] = convertPyProxyToJS(value, depth + 1);
             }
             return result;
           };
 
           jsResult = convertPyProxyToJS(jsResult);
+          
+          self.postMessage({ type: 'progress', progress: 98, step: 'Optimizing queries and indexing...' });
 
           // Final JSON serialization with special handling for complex objects
           jsResult = JSON.parse(JSON.stringify(jsResult, (key, value) => {
             // Last chance to handle any remaining proxy objects
             if (value && typeof value === 'object' && value.constructor && value.constructor.name === 'PyProxy') {
-              return value.toJs ? value.toJs() : String(value);
+              const converted = value.toJs ? value.toJs() : String(value);
+              // Destroy PyProxy after conversion
+              if (value.destroy) {
+                value.destroy();
+              }
+              return converted;
             }
-            // Ensure complex IFC objects are preserved
-            // (complex object preservation handled silently)
             return value;
           }));
+
+          // Explicitly destroy the original result PyProxy
+          if (result.destroy) {
+            result.destroy();
+          }
 
           // Processing completed silently
         } catch (conversionError) {
           console.error('[v0] Error converting Python result:', conversionError);
+          // Ensure cleanup even on error
+          if (result && result.destroy) {
+            result.destroy();
+          }
           throw new Error('Failed to convert Python result to JavaScript: ' + conversionError.message);
         }
         
@@ -686,7 +827,7 @@ print(f"[DEBUG] SQLite database path set to: {sqlite_db_path}")
           throw new Error('Python processing error: ' + jsResult.message);
         }
         
-        // IFC processing completed successfully using official ifc2sql.py
+        // Final step: 100% - all processing and conversion complete
         self.postMessage({ type: 'progress', progress: 100, step: 'Processing Complete' });
         self.postMessage({ type: 'complete', data: jsResult });
         
