@@ -20,29 +20,31 @@ export function WindowsControls({
     disabled = false,
     className
 }: WindowsControlsProps) {
-    const [isAnimating, setIsAnimating] = useState(false)
+    const [isClosing, setIsClosing] = useState(false)
+    const [isMinimizing, setIsMinimizing] = useState(false)
+    const [isMaximizing, setIsMaximizing] = useState(false)
 
     const handleClose = useCallback(() => {
-        if (disabled || isAnimating) return
-        setIsAnimating(true)
+        if (disabled || isClosing) return
+        setIsClosing(true)
         onClose?.()
         // Reset animation state after animation completes
-        setTimeout(() => setIsAnimating(false), 400)
-    }, [disabled, isAnimating, onClose])
+        setTimeout(() => setIsClosing(false), 400)
+    }, [disabled, isClosing, onClose])
 
     const handleMinimize = useCallback(() => {
-        if (disabled || isAnimating) return
-        setIsAnimating(true)
+        if (disabled || isMinimizing) return
+        setIsMinimizing(true)
         onMinimize?.()
-        setTimeout(() => setIsAnimating(false), 300)
-    }, [disabled, isAnimating, onMinimize])
+        setTimeout(() => setIsMinimizing(false), 300)
+    }, [disabled, isMinimizing, onMinimize])
 
     const handleMaximize = useCallback(() => {
-        if (disabled || isAnimating) return
-        setIsAnimating(true)
+        if (disabled || isMaximizing) return
+        setIsMaximizing(true)
         onMaximize?.()
-        setTimeout(() => setIsAnimating(false), 350)
-    }, [disabled, isAnimating, onMaximize])
+        setTimeout(() => setIsMaximizing(false), 350)
+    }, [disabled, isMaximizing, onMaximize])
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent, action: () => void) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -57,13 +59,15 @@ export function WindowsControls({
                 {/* Close Button (×) */}
                 <button
                     className={cn(
-                        "w-4 h-4 flex items-center justify-center text-xs font-bold",
+                        "w-4 h-4 flex items-center justify-center text-xs font-bold relative overflow-hidden",
                         "bg-red-500 hover:bg-red-600 active:bg-red-700",
-                        "border border-red-600 shadow-sm",
-                        "transition-all duration-150 ease-in-out",
+                        "border border-red-600",
+                        "transition-all duration-300 ease-out",
                         "focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-offset-1",
+                        "hover:shadow-[0_0_15px_rgba(239,68,68,0.6)]",
+                        "active:scale-95 active:shadow-[0_0_8px_rgba(239,68,68,0.4)]",
                         disabled && "opacity-50 cursor-not-allowed",
-                        isAnimating && "animate-pulse"
+                        isClosing && "animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.8)]"
                     )}
                     onClick={handleClose}
                     onKeyDown={(e) => handleKeyDown(e, handleClose)}
@@ -71,19 +75,21 @@ export function WindowsControls({
                     aria-label="Close window"
                     title="Close window"
                 >
-                    <span className="text-white leading-none">×</span>
+                    <span className="text-white leading-none relative z-10">×</span>
                 </button>
 
                 {/* Minimize Button (_) */}
                 <button
                     className={cn(
-                        "w-4 h-4 flex items-center justify-center text-xs font-bold",
+                        "w-4 h-4 flex items-center justify-center text-xs font-bold relative overflow-hidden",
                         "bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700",
-                        "border border-yellow-600 shadow-sm",
-                        "transition-all duration-150 ease-in-out",
+                        "border border-yellow-600",
+                        "transition-all duration-300 ease-out",
                         "focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:ring-offset-1",
+                        "hover:shadow-[0_0_15px_rgba(234,179,8,0.6)]",
+                        "active:scale-95 active:shadow-[0_0_8px_rgba(234,179,8,0.4)]",
                         disabled && "opacity-50 cursor-not-allowed",
-                        isAnimating && "animate-bounce"
+                        isMinimizing && "animate-bounce shadow-[0_0_20px_rgba(234,179,8,0.8)]"
                     )}
                     onClick={handleMinimize}
                     onKeyDown={(e) => handleKeyDown(e, handleMinimize)}
@@ -91,19 +97,21 @@ export function WindowsControls({
                     aria-label="Minimize window"
                     title="Minimize window"
                 >
-                    <span className="text-white leading-none">_</span>
+                    <span className="text-white leading-none relative z-10">_</span>
                 </button>
 
                 {/* Maximize Button (□) */}
                 <button
                     className={cn(
-                        "w-4 h-4 flex items-center justify-center text-xs font-bold",
+                        "w-4 h-4 flex items-center justify-center text-xs font-bold relative overflow-hidden",
                         "bg-green-500 hover:bg-green-600 active:bg-green-700",
-                        "border border-green-600 shadow-sm",
-                        "transition-all duration-150 ease-in-out",
+                        "border border-green-600",
+                        "transition-all duration-300 ease-out",
                         "focus:outline-none focus:ring-2 focus:ring-green-300 focus:ring-offset-1",
+                        "hover:shadow-[0_0_15px_rgba(34,197,94,0.6)]",
+                        "active:scale-95 active:shadow-[0_0_8px_rgba(34,197,94,0.4)]",
                         disabled && "opacity-50 cursor-not-allowed",
-                        isAnimating && "animate-spin"
+                        isMaximizing && "animate-spin shadow-[0_0_20px_rgba(34,197,94,0.8)]"
                     )}
                     onClick={handleMaximize}
                     onKeyDown={(e) => handleKeyDown(e, handleMaximize)}
@@ -111,7 +119,7 @@ export function WindowsControls({
                     aria-label="Maximize window"
                     title="Maximize window"
                 >
-                    <span className="text-white leading-none">□</span>
+                    <span className="text-white leading-none relative z-10">□</span>
                 </button>
             </div>
         )
@@ -122,10 +130,14 @@ export function WindowsControls({
         <div className={cn("flex items-center gap-1.5", className)} role="group" aria-label="Window controls">
             <button
                 className={cn(
-                    "w-3 h-3 rounded-full border border-red-400 bg-red-500",
-                    "hover:scale-110 active:scale-95 transition-transform duration-150",
+                    "w-3 h-3 rounded-full border border-red-400 bg-red-500 relative",
+                    "hover:scale-110 active:scale-95",
+                    "transition-all duration-300 ease-out",
+                    "hover:shadow-[0_0_12px_rgba(239,68,68,0.6)]",
+                    "active:shadow-[0_0_6px_rgba(239,68,68,0.4)]",
                     "focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-offset-1",
-                    disabled && "opacity-50 cursor-not-allowed"
+                    disabled && "opacity-50 cursor-not-allowed",
+                    isClosing && "animate-pulse shadow-[0_0_16px_rgba(239,68,68,0.8)]"
                 )}
                 onClick={handleClose}
                 onKeyDown={(e) => handleKeyDown(e, handleClose)}
@@ -135,10 +147,14 @@ export function WindowsControls({
             />
             <button
                 className={cn(
-                    "w-3 h-3 rounded-full border border-yellow-400 bg-yellow-500",
-                    "hover:scale-110 active:scale-95 transition-transform duration-150",
+                    "w-3 h-3 rounded-full border border-yellow-400 bg-yellow-500 relative",
+                    "hover:scale-110 active:scale-95",
+                    "transition-all duration-300 ease-out",
+                    "hover:shadow-[0_0_12px_rgba(234,179,8,0.6)]",
+                    "active:shadow-[0_0_6px_rgba(234,179,8,0.4)]",
                     "focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:ring-offset-1",
-                    disabled && "opacity-50 cursor-not-allowed"
+                    disabled && "opacity-50 cursor-not-allowed",
+                    isMinimizing && "animate-bounce shadow-[0_0_16px_rgba(234,179,8,0.8)]"
                 )}
                 onClick={handleMinimize}
                 onKeyDown={(e) => handleKeyDown(e, handleMinimize)}
@@ -148,10 +164,14 @@ export function WindowsControls({
             />
             <button
                 className={cn(
-                    "w-3 h-3 rounded-full border border-green-400 bg-green-500",
-                    "hover:scale-110 active:scale-95 transition-transform duration-150",
+                    "w-3 h-3 rounded-full border border-green-400 bg-green-500 relative",
+                    "hover:scale-110 active:scale-95",
+                    "transition-all duration-300 ease-out",
+                    "hover:shadow-[0_0_12px_rgba(34,197,94,0.6)]",
+                    "active:shadow-[0_0_6px_rgba(34,197,94,0.4)]",
                     "focus:outline-none focus:ring-2 focus:ring-green-300 focus:ring-offset-1",
-                    disabled && "opacity-50 cursor-not-allowed"
+                    disabled && "opacity-50 cursor-not-allowed",
+                    isMaximizing && "animate-spin shadow-[0_0_16px_rgba(34,197,94,0.8)]"
                 )}
                 onClick={handleMaximize}
                 onKeyDown={(e) => handleKeyDown(e, handleMaximize)}

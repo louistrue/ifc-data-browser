@@ -1,4 +1,4 @@
-import { Github, Globe, FileTextIcon, UsersIcon, ScaleIcon } from "lucide-react"
+import { Github, Globe, FileTextIcon, ScaleIcon } from "lucide-react"
 
 export function Footer() {
   return (
@@ -16,18 +16,6 @@ export function Footer() {
                 className="footer-link"
               >
                 AGPL-3.0 License
-              </a>
-            </div>
-            <span className="footer-separator">•</span>
-            <div className="flex items-center gap-2">
-              <UsersIcon className="h-3 w-3" />
-              <a
-                href="https://github.com/louistrue/ifc-data-browser/issues"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="footer-link"
-              >
-                Contribute
               </a>
             </div>
             <span className="footer-separator">•</span>

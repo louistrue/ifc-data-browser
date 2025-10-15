@@ -345,7 +345,7 @@ function SchemaFlow({
 
   if (isLoading) {
     return (
-      <div className="flex h-[600px] w-full items-center justify-center rounded-md border bg-muted/20">
+      <div className="flex h-[calc(100vh-200px)] w-full items-center justify-center rounded-md border bg-muted/20">
         <span className="text-sm text-muted-foreground">Loading database schema…</span>
       </div>
     )
@@ -353,7 +353,7 @@ function SchemaFlow({
 
   if (error) {
     return (
-      <div className="flex h-[600px] w-full flex-col items-center justify-center gap-3 rounded-md border bg-destructive/10 p-6 text-center">
+      <div className="flex h-[calc(100vh-200px)] w-full flex-col items-center justify-center gap-3 rounded-md border bg-destructive/10 p-6 text-center">
         <p className="text-sm text-destructive">{error}</p>
         <Button
           variant="outline"
@@ -370,15 +370,15 @@ function SchemaFlow({
 
   if (!schema || nodes.length === 0) {
     return (
-      <div className="flex h-[600px] w-full items-center justify-center rounded-md border bg-muted/20">
+      <div className="flex h-[calc(100vh-200px)] w-full items-center justify-center rounded-md border bg-muted/20">
         <span className="text-sm text-muted-foreground">Schema will appear after processing an IFC file.</span>
       </div>
     )
   }
 
   return (
-    <div className="h-[600px] w-full">
-      <div className="mb-3">
+    <div className="h-[calc(100vh-200px)] w-full flex flex-col">
+      <div className="mb-3 flex-shrink-0">
         <SchemaToolbar
           currentLayout={layoutAlgorithm}
           currentFilters={relationshipFilters}
@@ -390,7 +390,7 @@ function SchemaFlow({
           filteredEdgeCount={filteredEdges.length}
         />
       </div>
-      <div className="h-[520px] w-full overflow-visible rounded-md border">
+      <div className="flex-1 w-full overflow-visible rounded-md border">
         <ReactFlow<SchemaNodeData>
           nodes={nodes}
           edges={filteredEdges}

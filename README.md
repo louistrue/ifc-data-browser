@@ -11,7 +11,7 @@ A modern web application for exploring and analyzing IFC (Industry Foundation Cl
 ## 🚀 Features
 
 - **Client-Side Processing**: 100% privacy-first: all processing happens in your browser
-- **Multi-Format Support**: Compatible with IFC2X3, IFC4, and IFC4X3 formats
+- **Multi-Format Support**: Compatible with IFC2X3 and IFC4 formats (IFC4X3 coming soon)
 - **Interactive Database Viewer**: Browse, search, and query your IFC data as SQL tables
 - **WebAssembly Powered**: Uses Pyodide and IfcOpenShell compiled to WebAssembly
 - **Real-time Progress**: Live updates during file processing and conversion
@@ -126,7 +126,7 @@ pnpm start
 
 1. **File Upload**
    - Drag and drop IFC files or click to browse
-   - Supported formats: `.ifc` (IFC2X3, IFC4, IFC4X3)
+   - Supported formats: `.ifc` (IFC2X3, IFC4)
    - File size limit: Browser-dependent (typically 2GB+)
 
 2. **Processing**

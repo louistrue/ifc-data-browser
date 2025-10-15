@@ -39,7 +39,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${sourceSans.variable} antialiased`} suppressHydrationWarning>
       <body className="font-inter">
         <ThemeProvider>
-          <div className="flex flex-col min-h-screen">
+          <div className="flex flex-col h-screen">
             {children}
             <Footer />
           </div>

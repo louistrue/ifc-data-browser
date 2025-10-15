@@ -71,13 +71,28 @@ export function usePyodide() {
 
         worker.onerror = (error) => {
           console.error("[v0] Worker error:", error)
+
+          // Extract error message from the error event
+          let errorMessage = "Worker initialization failed"
+          if (error && typeof error === 'object') {
+            const errorEvent = error as ErrorEvent
+            if (errorEvent.message) {
+              errorMessage = errorEvent.message
+
+              // Provide user-friendly messages for common errors
+              if (errorMessage.includes("IFC4X3") || errorMessage.includes("schema")) {
+                errorMessage = "This IFC file uses IFC4X3 format which is not yet fully supported. Sorry about that, please try with an IFC4 or IFC2X3 in the meantime..."
+              }
+            }
+          }
+
           setStatus((prev) => ({
             ...prev,
             isProcessing: false,
-            error: "Worker initialization failed",
+            error: errorMessage,
           }))
           initializationPromiseRef.current = null
-          reject(new Error("Worker initialization failed"))
+          reject(new Error(errorMessage))
         }
 
         setStatus((prev) => ({ ...prev, isProcessing: true, progress: 0, currentStep: "Starting..." }))
@@ -125,13 +140,22 @@ export function usePyodide() {
               break
 
             case "error":
+              let errorMessage = data?.message || "Processing failed"
+
+              // Provide user-friendly messages for common errors
+              if (errorMessage.includes("IFC4X3") || errorMessage.includes("schema")) {
+                errorMessage = "This IFC file uses IFC4X3 format which is not yet fully supported. Sorry about that, please try with an IFC4 or IFC2X3 in the meantime..."
+              } else if (errorMessage.includes("Unsupported IFC schema")) {
+                errorMessage = "This IFC file uses a schema version that is not supported. Please try converting the file to IFC4 or IFC2X3 format."
+              }
+
               setStatus((prev) => ({
                 ...prev,
                 isProcessing: false,
-                error: data?.message || "Processing failed",
+                error: errorMessage,
               }))
               if (rejectRef.current) {
-                rejectRef.current(new Error(data?.message || "Processing failed"))
+                rejectRef.current(new Error(errorMessage))
                 rejectRef.current = null
               }
               break
