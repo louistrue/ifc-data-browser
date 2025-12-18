@@ -46,7 +46,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
 
   const handleTableSelect = (tableName: string) => {
     setSelectedTable(tableName)
-    setActiveTab("overview")
+    setActiveTab("entities")
   }
 
   const handleBackToOverview = () => {
