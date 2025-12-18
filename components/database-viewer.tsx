@@ -25,6 +25,9 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
   const [activeTab, setActiveTab] = useState("overview")
   const [showAllEntities, setShowAllEntities] = useState(false)
   
+  // Track navigation source for proper "Back" behavior when clicking entity links
+  const [navigationSource, setNavigationSource] = useState<{ tab: string; table: string | null } | null>(null)
+  
   // Transition for non-blocking filter updates
   const [isPending, startTransition] = useTransition()
   
@@ -480,12 +483,25 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
     }
   }, [specialTables, entityTables])
 
-  // Handler for entity click navigation
+  // Handler for entity click navigation - saves source for "Back" behavior
   const handleEntityClick = (entityType: string, entityId: string | number) => {
     // Check if entity type exists in data
     if (data.entities[entityType] && Array.isArray(data.entities[entityType])) {
+      // Save current location so "Back" returns here
+      setNavigationSource({ tab: activeTab, table: selectedTable })
       setSelectedTable(entityType)
       setActiveTab("entities")
+    }
+  }
+  
+  // Handler for "Back" button when navigated via entity link
+  const handleBackFromEntityLink = () => {
+    if (navigationSource) {
+      setActiveTab(navigationSource.tab)
+      setSelectedTable(navigationSource.table)
+      setNavigationSource(null) // Clear after returning
+    } else {
+      setSelectedTable(null)
     }
   }
 
@@ -858,7 +874,7 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
             <DataTable
               tableName={selectedTable}
               data={enhanceEntityData(data.entities[selectedTable] || [])}
-              onBack={() => setSelectedTable(null)}
+              onBack={handleBackFromEntityLink}
             />
           )}
         </TabsContent>
