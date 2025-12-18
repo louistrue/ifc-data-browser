@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback, useRef, useEffect, useDeferredValue } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,7 +18,11 @@ import {
   ChevronRightIcon,
   ChevronsLeftIcon,
   ChevronsRightIcon,
+  ExternalLinkIcon,
+  Loader2Icon,
 } from "lucide-react"
+import type { EntityFilter } from "@/components/entity-filter-panel"
+import { EntityFilterPanel } from "@/components/entity-filter-panel"
 
 interface DataTableProps {
   tableName: string
@@ -26,14 +30,47 @@ interface DataTableProps {
   onBack: () => void
   customTitle?: string
   description?: string
+  entityFilter?: EntityFilter
+  onEntityClick?: (entityType: string, entityId: string | number) => void
+  isLoading?: boolean
+  // Filter panel props
+  filterType?: "properties" | "quantities" | "materials"
+  availableEntityTypes?: string[]
+  availablePropertySets?: string[]
+  availableQuantityTypes?: string[]
+  availableMaterialTypes?: string[]
+  onFilterChange?: (filter: EntityFilter) => void
+  filterResultCount?: number
+  filterTotalCount?: number
 }
 
-export function DataTable({ tableName, data, onBack, customTitle, description }: DataTableProps) {
+export function DataTable({ 
+  tableName, 
+  data, 
+  onBack, 
+  customTitle, 
+  description, 
+  entityFilter, 
+  onEntityClick, 
+  isLoading,
+  filterType,
+  availableEntityTypes = [],
+  availablePropertySets = [],
+  availableQuantityTypes = [],
+  availableMaterialTypes = [],
+  onFilterChange,
+  filterResultCount,
+  filterTotalCount,
+}: DataTableProps) {
   const [searchTerm, setSearchTerm] = useState("")
+  const deferredSearchTerm = useDeferredValue(searchTerm) // Deferred for responsive input
   const [sortColumn, setSortColumn] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(500) // Large default for IFC data
+  
+  // Check if search is pending
+  const isSearchPending = searchTerm !== deferredSearchTerm
 
   const columns = useMemo(() => {
     if (data.length === 0) return []
@@ -74,13 +111,60 @@ export function DataTable({ tableName, data, onBack, customTitle, description }:
   const processedData = useMemo(() => {
     let filtered = data
 
-    // Apply search filter
-    if (searchTerm) {
-      filtered = data.filter((row) =>
+    // Apply entity filter if provided
+    if (entityFilter) {
+      filtered = filtered.filter((row) => {
+        // Filter by entity types
+        if (entityFilter.entityTypes.length > 0) {
+          const entityType = row.entity_type || row.Type
+          if (!entityType || !entityFilter.entityTypes.includes(entityType)) {
+            return false
+          }
+        }
+
+        // Filter by entity name search
+        if (entityFilter.entityNameSearch) {
+          const entityName = String(row.entity_name || row.Name || "").toLowerCase()
+          if (!entityName.includes(entityFilter.entityNameSearch.toLowerCase())) {
+            return false
+          }
+        }
+
+        // Filter by property set names (for properties)
+        if (entityFilter.propertySetNames && entityFilter.propertySetNames.length > 0) {
+          const psetName = row.pset_name
+          if (!psetName || !entityFilter.propertySetNames.includes(psetName)) {
+            return false
+          }
+        }
+
+        // Filter by quantity types (for quantities)
+        if (entityFilter.quantityTypes && entityFilter.quantityTypes.length > 0) {
+          const qtyType = row.quantity_type
+          if (!qtyType || !entityFilter.quantityTypes.includes(qtyType)) {
+            return false
+          }
+        }
+
+        // Filter by material types (for materials)
+        if (entityFilter.materialTypes && entityFilter.materialTypes.length > 0) {
+          const matType = row.Type || row.MaterialType
+          if (!matType || !entityFilter.materialTypes.includes(matType)) {
+            return false
+          }
+        }
+
+        return true
+      })
+    }
+
+    // Apply search filter (use deferred value for non-blocking UI)
+    if (deferredSearchTerm) {
+      filtered = filtered.filter((row) =>
         Object.values(row).some((value) => {
           if (value === null || value === undefined) return false
           const stringValue = String(value).toLowerCase()
-          return stringValue.includes(searchTerm.toLowerCase())
+          return stringValue.includes(deferredSearchTerm.toLowerCase())
         }),
       )
     }
@@ -111,7 +195,7 @@ export function DataTable({ tableName, data, onBack, customTitle, description }:
     }
 
     return filtered
-  }, [data, searchTerm, sortColumn, sortDirection])
+  }, [data, deferredSearchTerm, sortColumn, sortDirection, entityFilter])
 
   const totalPages = Math.ceil(processedData.length / pageSize)
   const startIndex = (currentPage - 1) * pageSize
@@ -120,10 +204,27 @@ export function DataTable({ tableName, data, onBack, customTitle, description }:
 
   useMemo(() => {
     setCurrentPage(1)
-  }, [searchTerm, sortColumn, sortDirection])
+  }, [searchTerm, sortColumn, sortDirection, entityFilter])
 
-  const formatCellValue = (value: any, column: string) => {
+  const formatCellValue = (value: any, column: string, row?: Record<string, any>) => {
     if (value === null || value === undefined) return <span className="text-muted-foreground italic">null</span>
+
+    // Make entity_id and entity_name clickable if onEntityClick is provided
+    if (onEntityClick && (column === "entity_id" || column === "entity_name")) {
+      const entityId = row?.entity_id || row?.id
+      const entityType = row?.entity_type || row?.Type
+      if (entityId && entityType) {
+        return (
+          <button
+            onClick={() => onEntityClick(entityType, entityId)}
+            className="text-primary hover:underline flex items-center gap-1 group"
+          >
+            {String(value)}
+            <ExternalLinkIcon className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
+        )
+      }
+    }
 
     const stringValue = String(value)
 
@@ -340,7 +441,8 @@ export function DataTable({ tableName, data, onBack, customTitle, description }:
               <CardTitle className="font-inter text-xl">{customTitle || tableName}</CardTitle>
               {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
             </div>
-            <Badge variant="secondary">
+            <Badge variant="secondary" className="flex items-center gap-1.5">
+              {(isLoading || isSearchPending) && <Loader2Icon className="w-3 h-3 animate-spin" />}
               {processedData.length} of {data.length} records
             </Badge>
           </div>
@@ -349,6 +451,24 @@ export function DataTable({ tableName, data, onBack, customTitle, description }:
             Export CSV
           </Button>
         </div>
+
+        {/* Filters UI (inline section that expands downward) */}
+        {filterType && onFilterChange && entityFilter && (
+          <div className="px-1 mt-3">
+            <EntityFilterPanel
+              availableEntityTypes={availableEntityTypes}
+              availablePropertySets={availablePropertySets}
+              availableQuantityTypes={availableQuantityTypes}
+              availableMaterialTypes={availableMaterialTypes}
+              filter={entityFilter}
+              onFilterChange={onFilterChange}
+              filterType={filterType}
+              resultCount={filterResultCount}
+              totalCount={filterTotalCount}
+              compact={true}
+            />
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -390,7 +510,7 @@ export function DataTable({ tableName, data, onBack, customTitle, description }:
         </div>
 
         {/* Data Table */}
-        <div className="border rounded-[4px]">
+        <div className={`border rounded-[4px] transition-opacity duration-150 ${(isLoading || isSearchPending) ? 'opacity-60' : 'opacity-100'}`}>
           <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
             <Table className="min-w-full">
               <TableHeader className="sticky top-0 bg-background z-10">
@@ -419,7 +539,7 @@ export function DataTable({ tableName, data, onBack, customTitle, description }:
                   <TableRow key={startIndex + index} className="hover:bg-muted/50">
                     {columns.map((column) => (
                       <TableCell key={column} className="font-mono text-[12px] whitespace-nowrap px-3 py-2">
-                        {formatCellValue(row[column], column)}
+                        {formatCellValue(row[column], column, row)}
                       </TableCell>
                     ))}
                   </TableRow>

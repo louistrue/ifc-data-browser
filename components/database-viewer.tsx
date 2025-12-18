@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useDeferredValue, useTransition } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -10,6 +10,7 @@ import type { ProcessingResult } from "@/lib/pyodide-worker"
 import { DataTable } from "@/components/data-table"
 import { QueryInterface } from "@/components/query-interface"
 import { SchemaTab } from "@/components/schema/schema-tab"
+import { EntityFilterPanel, type EntityFilter } from "@/components/entity-filter-panel"
 
 interface DatabaseViewerProps {
   data: ProcessingResult
@@ -23,6 +24,37 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
   const [selectedTable, setSelectedTable] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("overview")
   const [showAllEntities, setShowAllEntities] = useState(false)
+  
+  // Transition for non-blocking filter updates
+  const [isPending, startTransition] = useTransition()
+  
+  // Filter states for each tab
+  const [propertiesFilter, setPropertiesFilter] = useState<EntityFilter>({
+    entityTypes: [],
+    entityNameSearch: "",
+    propertySetNames: [],
+  })
+  const [quantitiesFilter, setQuantitiesFilter] = useState<EntityFilter>({
+    entityTypes: [],
+    entityNameSearch: "",
+    quantityTypes: [],
+  })
+  const [materialsFilter, setMaterialsFilter] = useState<EntityFilter>({
+    entityTypes: [],
+    entityNameSearch: "",
+    materialTypes: [],
+  })
+  
+  // Wrap filter updates in transitions for non-blocking UI
+  const handlePropertiesFilterChange = (filter: EntityFilter) => {
+    startTransition(() => setPropertiesFilter(filter))
+  }
+  const handleQuantitiesFilterChange = (filter: EntityFilter) => {
+    startTransition(() => setQuantitiesFilter(filter))
+  }
+  const handleMaterialsFilterChange = (filter: EntityFilter) => {
+    startTransition(() => setMaterialsFilter(filter))
+  }
 
   // Fetch schema data when component mounts
   useEffect(() => {
@@ -56,10 +88,44 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
 
 
 
+  // Build a lookup map from entity_id to entity info (type, name)
+  const entityLookupMap = useMemo(() => {
+    const map = new Map<number | string, { type: string; name: string }>()
+    
+    // Build from all entities
+    Object.entries(data.entities).forEach(([entityType, entities]) => {
+      if (Array.isArray(entities)) {
+        entities.forEach((entity: any) => {
+          if (entity.id !== undefined) {
+            map.set(entity.id, {
+              type: entityType,
+              name: entity.Name || entity.GlobalId || String(entity.id)
+            })
+          }
+        })
+      }
+    })
+    
+    // Also check id_map if available
+    if (data.entities.id_map && Array.isArray(data.entities.id_map)) {
+      data.entities.id_map.forEach((item: any) => {
+        if (item.ifc_id !== undefined && item.ifc_class) {
+          map.set(item.ifc_id, {
+            type: item.ifc_class,
+            name: map.get(item.ifc_id)?.name || String(item.ifc_id)
+          })
+        }
+      })
+    }
+    
+    return map
+  }, [data.entities])
+
   const extractPropertySets = () => {
     const allPsets: any[] = []
 
     if (data.properties && Array.isArray(data.properties)) {
+      // Enrich properties with entity_type by looking up entity_id
       return data.properties.filter((prop: any) => {
         const psetName = prop.pset_name?.toLowerCase() || ""
         const propName = prop.property_name?.toLowerCase() || ""
@@ -76,6 +142,14 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
           !propName.includes("volume") &&
           !propName.includes("weight")
         )
+      }).map((prop: any) => {
+        // Look up entity type from our map
+        const entityInfo = entityLookupMap.get(prop.entity_id)
+        return {
+          ...prop,
+          entity_type: entityInfo?.type || prop.entity_type,
+          entity_name: entityInfo?.name || prop.entity_name || String(prop.entity_id)
+        }
       })
     }
 
@@ -113,38 +187,34 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
   const extractMaterials = () => {
     const materials: any[] = []
 
-    // Check for IfcMaterial entities
-    if (data.entities.IfcMaterial && Array.isArray(data.entities.IfcMaterial)) {
-      materials.push(...data.entities.IfcMaterial)
+    // Helper to add materials with their type
+    const addMaterialsWithType = (entityType: string) => {
+      if (data.entities[entityType] && Array.isArray(data.entities[entityType])) {
+        data.entities[entityType].forEach((mat: any) => {
+          materials.push({
+            ...mat,
+            Type: entityType,
+            entity_type: entityType,
+            entity_id: mat.id,
+            entity_name: mat.Name || mat.GlobalId || `${entityType}_${mat.id}`
+          })
+        })
+      }
     }
 
-    // Check for IfcMaterialLayer entities
-    if (data.entities.IfcMaterialLayer && Array.isArray(data.entities.IfcMaterialLayer)) {
-      materials.push(...data.entities.IfcMaterialLayer)
-    }
-
-    // Check for IfcMaterialLayerSet entities
-    if (data.entities.IfcMaterialLayerSet && Array.isArray(data.entities.IfcMaterialLayerSet)) {
-      materials.push(...data.entities.IfcMaterialLayerSet)
-    }
-
-    // Check for IfcMaterialLayerSetUsage entities
-    if (data.entities.IfcMaterialLayerSetUsage && Array.isArray(data.entities.IfcMaterialLayerSetUsage)) {
-      materials.push(...data.entities.IfcMaterialLayerSetUsage)
-    }
-
-    // Check for IfcMaterialList entities
-    if (data.entities.IfcMaterialList && Array.isArray(data.entities.IfcMaterialList)) {
-      materials.push(...data.entities.IfcMaterialList)
-    }
+    // Check for all material entity types
+    addMaterialsWithType('IfcMaterial')
+    addMaterialsWithType('IfcMaterialLayer')
+    addMaterialsWithType('IfcMaterialLayerSet')
+    addMaterialsWithType('IfcMaterialLayerSetUsage')
+    addMaterialsWithType('IfcMaterialList')
 
     // Check for IfcMaterialDefinitionRepresentation entities
-    if (
-      data.entities.IfcMaterialDefinitionRepresentation &&
-      Array.isArray(data.entities.IfcMaterialDefinitionRepresentation)
-    ) {
-      materials.push(...data.entities.IfcMaterialDefinitionRepresentation)
-    }
+    addMaterialsWithType('IfcMaterialDefinitionRepresentation')
+    
+    // Also add IfcMaterialConstituent and IfcMaterialConstituentSet
+    addMaterialsWithType('IfcMaterialConstituent')
+    addMaterialsWithType('IfcMaterialConstituentSet')
 
     return materials
   }
@@ -376,6 +446,126 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
   const entityTables = getEntityTables()
   const filteredEntityTables = getFilteredEntityTables()
   const psetStats = getPsetStats()
+
+  // Extract filter options
+  const filterOptions = useMemo(() => {
+    // For properties: get entity types that actually have properties
+    // These are building element types (IfcWall, IfcSlab, etc.) because properties reference them via entity_id
+    const propertyEntityTypes = [...new Set(specialTables.properties.map((p: any) => p.entity_type).filter(Boolean))].sort()
+    
+    // For quantities: quantities ARE their own entity types (IfcQuantityLength, etc.)
+    // The entity_type field on quantities IS the quantity type
+    const quantityEntityTypes = [...new Set(specialTables.quantities.map((q: any) => q.entity_type).filter(Boolean))].sort()
+    
+    // For materials: materials ARE their own entity types (IfcMaterial, IfcMaterialLayer, etc.)
+    // Use the 'Type' field which was set during extraction
+    const materialEntityTypes = [...new Set(specialTables.materials.map((m: any) => m.Type).filter(Boolean))].sort()
+    
+    // Get unique property set names
+    const propertySetNames = [...new Set(specialTables.properties.map((p: any) => p.pset_name).filter(Boolean))].sort()
+    
+    // Get unique quantity types (derived from entity_type by removing "IfcQuantity" prefix)
+    const quantityTypes = [...new Set(specialTables.quantities.map((q: any) => q.quantity_type).filter(Boolean))].sort()
+    
+    // Get unique material types
+    const materialTypes = [...new Set(specialTables.materials.map((m: any) => m.Type).filter(Boolean))].sort()
+    
+    return {
+      propertyEntityTypes,
+      quantityEntityTypes,
+      materialEntityTypes,
+      propertySetNames,
+      quantityTypes,
+      materialTypes,
+    }
+  }, [specialTables, entityTables])
+
+  // Handler for entity click navigation
+  const handleEntityClick = (entityType: string, entityId: string | number) => {
+    // Check if entity type exists in data
+    if (data.entities[entityType] && Array.isArray(data.entities[entityType])) {
+      setSelectedTable(entityType)
+      setActiveTab("entities")
+    }
+  }
+
+  // Filter data based on filters
+  const filteredProperties = useMemo(() => {
+    let filtered = specialTables.properties
+    
+    if (propertiesFilter.entityTypes.length > 0) {
+      filtered = filtered.filter((p: any) => {
+        // Only include properties that have entity_type and match the filter
+        return p.entity_type && propertiesFilter.entityTypes.includes(p.entity_type)
+      })
+    }
+    if (propertiesFilter.entityNameSearch) {
+      const search = propertiesFilter.entityNameSearch.toLowerCase()
+      filtered = filtered.filter((p: any) => 
+        String(p.entity_name || "").toLowerCase().includes(search)
+      )
+    }
+    if (propertiesFilter.propertySetNames && propertiesFilter.propertySetNames.length > 0) {
+      filtered = filtered.filter((p: any) => 
+        propertiesFilter.propertySetNames?.includes(p.pset_name)
+      )
+    }
+    
+    return filtered
+  }, [specialTables.properties, propertiesFilter])
+
+  const filteredQuantities = useMemo(() => {
+    let filtered = specialTables.quantities
+    
+    if (quantitiesFilter.entityTypes.length > 0) {
+      filtered = filtered.filter((q: any) => quantitiesFilter.entityTypes.includes(q.entity_type))
+    }
+    if (quantitiesFilter.entityNameSearch) {
+      const search = quantitiesFilter.entityNameSearch.toLowerCase()
+      filtered = filtered.filter((q: any) => 
+        String(q.entity_name || "").toLowerCase().includes(search)
+      )
+    }
+    if (quantitiesFilter.quantityTypes && quantitiesFilter.quantityTypes.length > 0) {
+      filtered = filtered.filter((q: any) => 
+        quantitiesFilter.quantityTypes?.includes(q.quantity_type)
+      )
+    }
+    
+    return filtered
+  }, [specialTables.quantities, quantitiesFilter])
+
+  const filteredMaterials = useMemo(() => {
+    let filtered = specialTables.materials
+    
+    if (materialsFilter.entityTypes.length > 0) {
+      filtered = filtered.filter((m: any) => materialsFilter.entityTypes.includes(m.Type))
+    }
+    if (materialsFilter.entityNameSearch) {
+      const search = materialsFilter.entityNameSearch.toLowerCase()
+      filtered = filtered.filter((m: any) => 
+        String(m.Name || m.GlobalId || "").toLowerCase().includes(search)
+      )
+    }
+    if (materialsFilter.materialTypes && materialsFilter.materialTypes.length > 0) {
+      filtered = filtered.filter((m: any) => 
+        materialsFilter.materialTypes?.includes(m.Type)
+      )
+    }
+    
+    return filtered
+  }, [specialTables.materials, materialsFilter])
+  
+  // Use deferred values for filtered data to keep UI responsive
+  const deferredProperties = useDeferredValue(filteredProperties)
+  const deferredQuantities = useDeferredValue(filteredQuantities)
+  const deferredMaterials = useDeferredValue(filteredMaterials)
+  
+  // Check if we're still processing filters
+  const isFiltering = isPending || 
+    deferredProperties !== filteredProperties ||
+    deferredQuantities !== filteredQuantities ||
+    deferredMaterials !== filteredMaterials
 
   // Stats calculated silently
 
@@ -676,30 +866,57 @@ export function DatabaseViewer({ data, onBackToUpload, fileName = "unknown.ifc",
         <TabsContent value="properties" className="space-y-6">
           <DataTable
             tableName="properties"
-            data={specialTables.properties}
+            data={deferredProperties}
             onBack={() => setActiveTab("overview")}
             customTitle="Property Sets & Values"
             description="All property sets and their values extracted from IFC elements (excluding quantities)"
+            entityFilter={propertiesFilter}
+            onEntityClick={handleEntityClick}
+            isLoading={isFiltering}
+            filterType="properties"
+            availableEntityTypes={filterOptions.propertyEntityTypes}
+            availablePropertySets={filterOptions.propertySetNames}
+            onFilterChange={handlePropertiesFilterChange}
+            filterResultCount={filteredProperties.length}
+            filterTotalCount={specialTables.properties.length}
           />
         </TabsContent>
 
         <TabsContent value="quantities" className="space-y-6">
           <DataTable
             tableName="quantities"
-            data={specialTables.quantities}
+            data={deferredQuantities}
             onBack={() => setActiveTab("overview")}
             customTitle="Element Quantities & BaseQuantities"
             description="IFC element quantities including IfcElementQuantity BaseQuantities with dimensional and measurement data"
+            entityFilter={quantitiesFilter}
+            onEntityClick={handleEntityClick}
+            isLoading={isFiltering}
+            filterType="quantities"
+            availableEntityTypes={filterOptions.quantityEntityTypes}
+            availableQuantityTypes={filterOptions.quantityTypes}
+            onFilterChange={handleQuantitiesFilterChange}
+            filterResultCount={filteredQuantities.length}
+            filterTotalCount={specialTables.quantities.length}
           />
         </TabsContent>
 
         <TabsContent value="materials" className="space-y-6">
           <DataTable
             tableName="materials"
-            data={specialTables.materials}
+            data={deferredMaterials}
             onBack={() => setActiveTab("overview")}
             customTitle="IFC Materials"
             description="IFC material entities including IfcMaterial, IfcMaterialLayer, IfcMaterialLayerSet, and related material definitions"
+            entityFilter={materialsFilter}
+            onEntityClick={handleEntityClick}
+            isLoading={isFiltering}
+            filterType="materials"
+            availableEntityTypes={filterOptions.materialEntityTypes}
+            availableMaterialTypes={filterOptions.materialTypes}
+            onFilterChange={handleMaterialsFilterChange}
+            filterResultCount={filteredMaterials.length}
+            filterTotalCount={specialTables.materials.length}
           />
         </TabsContent>
 
